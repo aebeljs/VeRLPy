@@ -1,15 +1,7 @@
 import cocotb
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
 from test_rle_compression_cocotb import *
 import itertools
 import matplotlib.pyplot as plt
-
-# if gpu is to be used
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(device)
 
 coverage = []
 
@@ -17,7 +9,6 @@ coverage = []
 def monitor_signals(dut):
     while True:
         yield RisingEdge(dut.CLK)
-        # print('[SIG_MON] {0:<25} : {1}'.format('rg_next_word ', hex(dut.rg_next_word.value)))
         s = [(int)(dut.rg_word_counter.value == 16), (int)(dut.rg_zero_counter.value == 64), 0]
         zero_counter = hex(dut.rg_counter.value)
         for i in range(2, len(zero_counter)):
@@ -28,12 +19,13 @@ def monitor_signals(dut):
 
 @cocotb.test()
 def run_test(dut):
-    NUM_EPISODES = 100
+    NUM_EPISODES = 1000
     action_list = []
 
     N = 100 # total number of elements in activation map
     I = 10 # change this later
-    for i in range(I, N):
+
+    for i in range(N - I):
         action_list.append(i)
 
     cocotb.fork(clock_gen(dut.CLK))
@@ -41,22 +33,27 @@ def run_test(dut):
 
     chosen_actions = []
     coverage_list = []
+
+    word_width = 4  #Can be randomised to pick only from the set 4, 8, 16, 32
+    # count_width = random.randint(1,8)
+    count_width = 6
+    suffix = "_N=" + str(N) + ",I=" + str(I) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
+
+    tb = TestBench(dut)
     for i in range(NUM_EPISODES):
         print("Epsiode number: ", i)
 
         # take step
         # action_taken, next_state, reward = take_step_in_env(curr_state, dut)
         # wrap this one episode inside the training loop
-        tb = TestBench(dut)
+
         dut.RST_N <= 0
         yield Timer(2)
         dut.RST_N <= 1
 
-        # print(coverage)
+        # print("coverage len", len(coverage))
         coverage.clear()
 
-        word_width = 4  #Can be randomised to pick only from the set 4, 8, 16, 32
-        count_width = random.randint(1,8)
         start_comp = start_compression(tb,word_width,count_width)
         for t in start_comp:
             yield tb.input_drv.send(t)
@@ -82,8 +79,8 @@ def run_test(dut):
                 output_enable = enable_compression_output(tb)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 ##Enabling output is not considered as new input
-        print("initial done")
+                n = n-1 # Enabling output is not considered as new input
+
         # RL generated number of consecutive 0s
         for n in range(Z):
             # generate consecutive 0s
@@ -92,13 +89,13 @@ def run_test(dut):
                 for t in input_gen:
                     yield tb.input_drv.send(t)
                 yield RisingEdge(dut.CLK)
-                # fsm_states_visited.append(cocotb.fork(monitor_signals(dut)))
+
             elif(dut.RDY_mav_send_compressed_value == 1):
                 output_enable = enable_compression_output(tb)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 ##Enabling output is not considered as new input
-        print("zero done")
+                n = n-1 # Enabling output is not considered as new input
+
         # remaining non-zero elements in the activation map
         for n in range(N - Z - I):
             if(dut.RDY_ma_get_input == 1):
@@ -106,20 +103,20 @@ def run_test(dut):
                 for t in input_gen:
                     yield tb.input_drv.send(t)
                 yield RisingEdge(dut.CLK)
-                # fsm_states_visited.append(cocotb.fork(monitor_signals(dut)))
+
             elif(dut.RDY_mav_send_compressed_value == 1):
                 output_enable = enable_compression_output(tb)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 ##Enabling output is not considered as new input
-        print("final done")
+                n = n-1 # Enabling output is not considered as new input
+
         end_comp = enable_end_compression(tb)
         for t in end_comp:
             yield tb.input_drv.send(t)
 
         for n in range(10):
             yield RisingEdge(dut.CLK)
-        tb.stop()
+
         yield RisingEdge(dut.CLK)
 
         # calculate the reward
@@ -128,10 +125,11 @@ def run_test(dut):
         print("last coverage: ", set_coverage)
         coverage_list = coverage_list + set_coverage
 
+    tb.stop()
     # plot results
     plt.hist(chosen_actions)
-    plt.title("Histogram of consecutive zeros in the activation map")
-    plt.savefig('./hist_of_actions.png')
+    plt.title("Random choice - Histogram of consecutive zeros in the activation map")
+    plt.savefig('./hist_of_actions' + suffix + '.png')
     plt.close()
 
     state_list = []
@@ -140,6 +138,6 @@ def run_test(dut):
         state_list.append(x)
 
     plt.hist(state_list)
-    plt.title("Histogram of covered states")
-    plt.savefig('./hist_of_coverage.png')
+    plt.title("Random choice - Histogram of covered states")
+    plt.savefig('./hist_of_coverage' + suffix + '.png')
     plt.close()
