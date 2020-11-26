@@ -9,12 +9,10 @@ coverage = []
 def monitor_signals(dut):
     while True:
         yield RisingEdge(dut.CLK)
-        s = [(int)(dut.rg_word_counter.value == 16), (int)(dut.rg_zero_counter.value == 64), 0]
-        zero_counter = hex(dut.rg_counter.value)
-        for i in range(2, len(zero_counter)):
-            if(zero_counter[i] == 'f'):
-                s[2] = 1
-                break
+        s = [(int)(dut.rg_word_counter.value == 16),
+            (int)(dut.rg_zero_counter.value == 64),
+            (int)(dut.rg_counter.value == (2**count_width - 2)),
+            (int)(dut.rg_next_count != 0)]
         coverage.append(s)
 
 @cocotb.test()
@@ -22,11 +20,17 @@ def run_test(dut):
     NUM_EPISODES = 1000
     action_list = []
 
-    N = 100 # total number of elements in activation map
-    I = 10 # change this later
+    N = 400 # total number of elements in activation map
+    I = 100 # change this later
 
     for i in range(N - I):
         action_list.append(i)
+
+    global word_width
+    global count_width
+
+    word_width = 4 #Can be randomised to pick only from the set 1, 2, 4, 8
+    count_width = 6 # count_width = random.randint(1,8)
 
     cocotb.fork(clock_gen(dut.CLK))
     cocotb.fork(monitor_signals(dut))
@@ -34,9 +38,6 @@ def run_test(dut):
     chosen_actions = []
     coverage_list = []
 
-    word_width = 4  #Can be randomised to pick only from the set 4, 8, 16, 32
-    # count_width = random.randint(1,8)
-    count_width = 6
     suffix = "_N=" + str(N) + ",I=" + str(I) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
 
     tb = TestBench(dut)
