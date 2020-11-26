@@ -32,6 +32,7 @@ SIM=verilator
 
 #COMPILE_ARGS = -LDFLAGS -Wl,--no-as-needed +define+BSV_RESET_FIFO_HEAD +define+BSV_RESET_FIFO_ARRAY
 # EXTRA_ARGS += --trace --trace-structs --coverage
+EXTRA_ARGS += --trace --trace-structs
 PWD=$(shell pwd)
 
 #ifeq ($(OS),Msys)

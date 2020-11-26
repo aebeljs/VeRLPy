@@ -34,39 +34,32 @@ class ReplayMemory(object):
     def __len__(self):
         return len(self.memory)
 
-
-def plot_durations():
-    plt.figure(2)
-    plt.clf()
-    durations_t = torch.tensor(episode_durations, dtype=torch.float)
-    plt.title('Training...')
-    plt.xlabel('Episode')
-    plt.ylabel('Duration')
-    plt.plot(durations_t.numpy())
-    # Take 100 episode averages and plot them too
-    if len(durations_t) >= 100:
-        means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
-        means = torch.cat((torch.zeros(99), means))
-        plt.plot(means.numpy())
-
-    plt.pause(0.001)  # pause a bit so that plots are updated
-    if is_ipython:
-        display.clear_output(wait=True)
-        display.display(plt.gcf())
-
 class DQN(nn.Module):
     def __init__(self, N_state, N_action):
         super(DQN, self).__init__()
-        self.fc1 = nn.Linear(N_state + N_action, 3)
-        self.fc2 = nn.Linear(3, 3)
-        self.head = nn.Linear(3, 1)
+        self.fc1 = nn.Linear(N_state + N_action, 32)
+        self.fc2 = nn.Linear(32, 32)
+        self.fc3 = nn.Linear(32, 32)
+        # self.fc4 = nn.Linear(8, 8)
+        # self.fc5 = nn.Linear(8, 8)
+        # self.fc6 = nn.Linear(3, 3)
+        self.head = nn.Linear(32, 1)
 
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
         x = F.relu(self.fc1(x))
+        # x = torch.sigmoid(self.fc1(x))
+        # x = torch.sigmoid(self.fc2(x))
+        # x = torch.sigmoid(self.fc3(x))
+        # x = torch.sigmoid(self.fc4(x))
+        # x = torch.sigmoid(self.fc5(x))
         x = F.relu(self.fc2(x))
-        return self.head(x.view(x.size(0), -1))
+        x = F.relu(self.fc3(x))
+        # x = F.relu(self.fc6(x))
+        # return self.head(x.view(x.size(0), -1))
+        x = self.head(x)
+        return x
 
 class State:
     def __init__(self, data):

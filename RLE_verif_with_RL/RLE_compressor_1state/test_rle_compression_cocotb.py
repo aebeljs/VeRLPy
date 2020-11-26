@@ -296,7 +296,8 @@ def start_compression(tb,word_width,count_width):
 def random_input_gen(tb):
     ma_start_compression_word_width=0
     ma_start_compression_count_Width=0
-    ma_get_input_val=random.randint(0,0xFFFFFFFF)
+    # ma_get_input_val=random.randint(0,0xFFFFFFFF)
+    ma_get_input_val=1
     EN_ma_start_compression=0
     EN_ma_get_input=1
     EN_ma_end_compression=0
