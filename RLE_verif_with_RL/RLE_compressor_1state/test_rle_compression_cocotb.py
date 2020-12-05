@@ -235,7 +235,7 @@ class DUTScoreboard(Scoreboard):
         print("got")
         print(got.value[2])
         print(got.value[3])
-        if(got.value[2] != got.value[2]):
+        if(got.value[2] != exp.value[2]):
             print("Values mismatched")
             exit(1)
         else:
