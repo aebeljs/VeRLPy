@@ -92,7 +92,8 @@ def run_test(dut):
         dut.RST_N <= 1
 
         coverage.clear()
-
+				tb.word_width = word_width
+				tb.count_width = count_width
         start_comp = start_compression(tb,word_width,count_width)
         for t in start_comp:
             yield tb.input_drv.send(t)
@@ -108,50 +109,61 @@ def run_test(dut):
 
         # take action
         # number of non-zero activation map elements at the start
-        for n in range(I):
+        n = 0
+        while(n < I):
             if(dut.RDY_ma_get_input == 1):
                 input_gen = random_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
+                n=n+1
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
                 output_enable = enable_compression_output(tb)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 # Enabling output is not considered as new input
 
         # RL generated number of consecutive 0s
-        for n in range(Z):
+        n=0
+        while(n < Z):
             # generate consecutive 0s
             if(dut.RDY_ma_get_input == 1):
                 input_gen = zero_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
+                n=n+1
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
                 output_enable = enable_compression_output(tb)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 # Enabling output is not considered as new input
 
         # remaining non-zero elements in the activation map
-        for n in range(N - Z - I):
+        n=0
+        while( n < N - Z - I):
             if(dut.RDY_ma_get_input == 1):
                 input_gen = random_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
+                n = n + 1
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
                 output_enable = enable_compression_output(tb)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 # Enabling output is not considered as new input
 
         end_comp = enable_end_compression(tb)
         for t in end_comp:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb)
+        for t in output_enable:
             yield tb.input_drv.send(t)
 
         for n in range(10):
