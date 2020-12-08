@@ -51,7 +51,7 @@ else
 endif
 
 TOPLEVEL := mkrle_compression
-MODULE   := test_1state_random_rle_compression
+MODULE   := test_study_rle_compression
 
 #include $(shell cocotb-config --makefiles)/Makefile.inc
 include $(shell cocotb-config --makefiles)/Makefile.sim

@@ -1,4 +1,4 @@
-import cocotb
+import cocotb, os
 from test_rle_compression_cocotb import *
 import itertools
 import matplotlib.pyplot as plt
@@ -26,23 +26,26 @@ def run_test(dut):
     for i in range(N - I):
         action_list.append(i)
 
-    global word_width
+    global word_width # Can be randomised to pick only from the set 1, 2, 4, 8
+    # count_width = random.randint(1,8)
     global count_width
 
-    word_width = 4 #Can be randomised to pick only from the set 1, 2, 4, 8
-    count_width = 6 # count_width = random.randint(1,8)
-
+    word_width = 16
+    count_width = 8
     cocotb.fork(clock_gen(dut.CLK))
     cocotb.fork(monitor_signals(dut))
 
     chosen_actions = []
     coverage_list = []
 
-    suffix = "_N=" + str(N) + ",I=" + str(I) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
+    filename = './word_w=' + str(word_width) + ',count_w=' + str(count_width) + '.txt'
+    with open(filename, 'a') as the_file:
+        the_file.write('\n' + 'Word width = ' + str(word_width) + '\t Count width = ' + str(count_width) + '\n')
+        the_file.write('N = ' + str(N) + '\t I = ' + str(I) + '\n\n')
 
     tb = TestBench(dut)
-    for i in range(NUM_EPISODES):
-        print("Epsiode number: ", i)
+    for Z in action_list:
+        print("Consecutive zero inputs: ", Z)
 
         # take step
         # action_taken, next_state, reward = take_step_in_env(curr_state, dut)
@@ -61,11 +64,8 @@ def run_test(dut):
         yield RisingEdge(dut.CLK)
         yield RisingEdge(dut.CLK)
 
-        # generate action for agent based on curr_state
-        Z = random.choice(action_list)
-
         chosen_actions.append(Z)
-        print("action: ", Z)
+        # print("action: ", Z)
 
         # take action
         # number of non-zero activation map elements at the start
@@ -120,25 +120,15 @@ def run_test(dut):
 
         yield RisingEdge(dut.CLK)
 
-        # calculate the reward
         coverage.sort()
         set_coverage = list(coverage for coverage,_ in itertools.groupby(coverage))
+        with open(filename, 'a') as the_file:
+            the_file.write(str(Z) + ':\t')
+            for x in set_coverage:
+                y = ''.join(map(str, x))
+                the_file.write(y + ', ')
+            the_file.write('\n')
+
         print("last coverage: ", set_coverage)
-        coverage_list = coverage_list + set_coverage
 
     tb.stop()
-    # plot results
-    plt.hist(chosen_actions)
-    plt.title("Random choice - Histogram of consecutive zeros in the activation map")
-    plt.savefig('./hist_of_actions' + suffix + '.png')
-    plt.close()
-
-    state_list = []
-    for cov in coverage_list:
-        x = ''.join(map(str, cov))
-        state_list.append(x)
-
-    plt.hist(state_list)
-    plt.title("Random choice - Histogram of covered states")
-    plt.savefig('./hist_of_coverage' + suffix + '.png')
-    plt.close()

@@ -28,10 +28,9 @@
 ###############################################################################
 
 TOPLEVEL_LANG ?= verilog
-SIM=verilator
 
 #COMPILE_ARGS = -LDFLAGS -Wl,--no-as-needed +define+BSV_RESET_FIFO_HEAD +define+BSV_RESET_FIFO_ARRAY
-#EXTRA_ARGS += --trace --trace-structs --coverage
+EXTRA_ARGS += --trace --trace-structs --coverage
 PWD=$(shell pwd)
 
 #ifeq ($(OS),Msys)
@@ -51,7 +50,7 @@ else
 endif
 
 TOPLEVEL := mkrle_compression
-MODULE   := test_1state_random_rle_compression
+MODULE   := test_rle_compression
 
 #include $(shell cocotb-config --makefiles)/Makefile.inc
 include $(shell cocotb-config --makefiles)/Makefile.sim

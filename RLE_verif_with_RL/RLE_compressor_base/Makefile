@@ -43,8 +43,7 @@ WPWD=$(shell pwd)
 #endif
 
 ifeq ($(TOPLEVEL_LANG),verilog)
-#     mkinteger_divider.v
-    VERILOG_SOURCES = $(WPWD)/*.v
+    VERILOG_SOURCES = $(WPWD)/../hw_modules/verilog/*.v
 else ifeq ($(TOPLEVEL_LANG),vhdl)
     VHDL_SOURCES = $(WPWD)/../hdl/adder.vhdl
 else

@@ -21,13 +21,16 @@ def run_test(dut):
     action_list = []
 
     N = 400 # total number of elements in activation map
+    I = 100 # change this later
+
+    for i in range(N - I):
+        action_list.append(i)
 
     global word_width
     global count_width
 
-    word_width = 4  #Can be randomised to pick only from the set 1, 2, 4, 8
-    # count_width = random.randint(1,8)
-    count_width = 6
+    word_width = 4 #Can be randomised to pick only from the set 1, 2, 4, 8
+    count_width = 6 # count_width = random.randint(1,8)
 
     cocotb.fork(clock_gen(dut.CLK))
     cocotb.fork(monitor_signals(dut))
@@ -35,10 +38,9 @@ def run_test(dut):
     chosen_actions = []
     coverage_list = []
 
+    suffix = "_N=" + str(N) + ",I=" + str(I) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
+
     tb = TestBench(dut)
-
-    suffix = "_N=" + str(N) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
-
     for i in range(NUM_EPISODES):
         print("Epsiode number: ", i)
 
@@ -50,7 +52,7 @@ def run_test(dut):
         yield Timer(2)
         dut.RST_N <= 1
 
-        # print(coverage)
+        # print("coverage len", len(coverage))
         coverage.clear()
 
         start_comp = start_compression(tb,word_width,count_width)
@@ -59,9 +61,44 @@ def run_test(dut):
         yield RisingEdge(dut.CLK)
         yield RisingEdge(dut.CLK)
 
+        # generate action for agent based on curr_state
+        Z =  random.choice(action_list)
+
+        chosen_actions.append(Z)
+        print("action: ", Z)
+
         # take action
         # number of non-zero activation map elements at the start
-        for n in range(N):
+        for n in range(I):
+            if(dut.RDY_ma_get_input == 1):
+                input_gen = random_input_gen(tb)
+                for t in input_gen:
+                    yield tb.input_drv.send(t)
+                yield RisingEdge(dut.CLK)
+
+            elif(dut.RDY_mav_send_compressed_value == 1):
+                output_enable = enable_compression_output(tb)
+                for t in output_enable:
+                    yield tb.input_drv.send(t)
+                n = n-1 # Enabling output is not considered as new input
+
+        # RL generated number of consecutive 0s
+        for n in range(Z):
+            # generate consecutive 0s
+            if(dut.RDY_ma_get_input == 1):
+                input_gen = zero_input_gen(tb)
+                for t in input_gen:
+                    yield tb.input_drv.send(t)
+                yield RisingEdge(dut.CLK)
+
+            elif(dut.RDY_mav_send_compressed_value == 1):
+                output_enable = enable_compression_output(tb)
+                for t in output_enable:
+                    yield tb.input_drv.send(t)
+                n = n-1 # Enabling output is not considered as new input
+
+        # remaining non-zero elements in the activation map
+        for n in range(N - Z - I):
             if(dut.RDY_ma_get_input == 1):
                 input_gen = random_input_gen(tb)
                 for t in input_gen:
@@ -83,19 +120,25 @@ def run_test(dut):
 
         yield RisingEdge(dut.CLK)
 
-        # calculate the coverage
+        # calculate the reward
         coverage.sort()
         set_coverage = list(coverage for coverage,_ in itertools.groupby(coverage))
         print("last coverage: ", set_coverage)
         coverage_list = coverage_list + set_coverage
 
     tb.stop()
+    # plot results
+    plt.hist(chosen_actions)
+    plt.title("Random choice - Histogram of consecutive zeros in the activation map")
+    plt.savefig('./hist_of_actions' + suffix + '.png')
+    plt.close()
+
     state_list = []
     for cov in coverage_list:
         x = ''.join(map(str, cov))
         state_list.append(x)
 
     plt.hist(state_list)
-    plt.title("Baseline random - Histogram of covered states")
+    plt.title("Random choice - Histogram of covered states")
     plt.savefig('./hist_of_coverage' + suffix + '.png')
     plt.close()
