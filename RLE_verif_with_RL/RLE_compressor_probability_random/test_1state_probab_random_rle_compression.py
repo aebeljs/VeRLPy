@@ -63,7 +63,8 @@ def run_test(dut):
         chosen_actions.append(Z)
 
         # take action
-        for n in range(N):
+        n = 0
+        while(n < N):
             # generate consecutive 0s
             if(dut.RDY_ma_get_input == 1):
                 sample = random.random()
@@ -74,12 +75,13 @@ def run_test(dut):
                 for t in input_gen:
                     yield tb.input_drv.send(t)
                 yield RisingEdge(dut.CLK)
+                n += 1
                 # fsm_states_visited.append(cocotb.fork(monitor_signals(dut)))
             elif(dut.RDY_mav_send_compressed_value == 1):
                 output_enable = enable_compression_output(tb)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 ##Enabling output is not considered as new input
+                # n = n-1 ##Enabling output is not considered as new input
 
         end_comp = enable_end_compression(tb)
         for t in end_comp:
