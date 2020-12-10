@@ -222,28 +222,28 @@ def run_test(dut):
     plt.xlabel("Actions")
     plt.ylabel("Q-value")
     # plt.show()
-    plt.savefig('./Q_function_0010' + suffix + '.png')
+    plt.savefig('./Q_function_R=0_0100' + suffix + '.png')
     plt.close()
 
     plt.plot(np.log(loss_list))
     plt.title("Training log loss")
     plt.grid()
     # plt.show()
-    plt.savefig('./log_loss_plot_0010' + suffix + '.png')
+    plt.savefig('./log_loss_plot_R=0_0100' + suffix + '.png')
     plt.close()
 
     plt.plot(loss_list)
     plt.title("Training loss")
     plt.grid()
     # plt.show()
-    plt.savefig('./loss_plot_0010' + suffix + '.png')
+    plt.savefig('./loss_plot_R=0_0100' + suffix + '.png')
     plt.close()
 
     # plot results
     plt.hist(chosen_actions)
     plt.tight_layout()
-    plt.title("Stochastic input using RL- Histogram of Pr(0) in the activation map\n" + "Reward scheme: 0010")
-    plt.savefig('./hist_of_actions_0010' + suffix + '.png')
+    plt.title("Stochastic input using RL- Histogram of Pr(0) in the activation map\n" + "Reward scheme: 0100")
+    plt.savefig('./hist_of_actions_R=0_0100' + suffix + '.png')
     plt.close()
 
     state_list = []
@@ -260,8 +260,8 @@ def run_test(dut):
     plt.xticks(rotation = 90)
     plt.tight_layout()
     # plt.hist(state_list)
-    plt.title("Stochastic input using RL - Histogram of covered states\n" + "Reward scheme: 0010")
-    plt.savefig('./hist_of_coverage_0010' + suffix + '.png')
+    plt.title("Stochastic input using RL - Histogram of covered states\n" + "Reward scheme: 0100")
+    plt.savefig('./hist_of_coverage_R=0_0100' + suffix + '.png')
     plt.close()
 
 def get_action(curr_state, net, action_tensor, steps_done):
@@ -290,35 +290,35 @@ def get_reward_based_on_states_visited(coverage):
     reward = 0
     for visited_state in coverage:
         if(visited_state == [0, 0, 0, 0]):
-            reward += 1
+            reward += 0
         if(visited_state == [0, 0, 0, 1]):
-            reward += 1
+            reward += 0
         if(visited_state == [0, 0, 1, 0]):
-            reward += 10
+            reward += 0
         if(visited_state == [0, 0, 1, 1]):
-            reward += 1
+            reward += 0
         if(visited_state == [0, 1, 0, 0]):
-            reward += 1
+            reward += 10
         if(visited_state == [0, 1, 0, 1]):
-            reward += 1
+            reward += 0
         if(visited_state == [0, 1, 1, 0]):
-            reward += 1
+            reward += 0
         if(visited_state == [0, 1, 1, 1]):
-            reward += 1
+            reward += 0
         if(visited_state == [1, 0, 0, 0]):
-            reward += 1
+            reward += 0
         if(visited_state == [1, 0, 0, 1]):
-            reward += 1
+            reward += 0
         if(visited_state == [1, 0, 1, 0]):
-            reward += 1
+            reward += 0
         if(visited_state == [1, 0, 1, 1]):
-            reward += 1
+            reward += 0
         if(visited_state == [1, 1, 0, 0]):
-            reward += 1
+            reward += 0
         if(visited_state == [1, 1, 0, 1]):
-            reward += 1
+            reward += 0
         if(visited_state == [1, 1, 1, 0]):
-            reward += 1
+            reward += 0
         if(visited_state == [1, 1, 1, 1]):
-            reward += 1
+            reward += 0
     return reward
