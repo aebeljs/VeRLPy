@@ -89,10 +89,10 @@ class InputMonitor(BusMonitor):
         EN_inp_edge = RisingEdge(self.bus.EN_ma_get_input)
         valid = False
         while True:
-            #if self.bus.EN_ma_get_input.value.integer != 1 and self.bus.EN_ma_end_compression.value.integer != 1:
+            # if self.bus.EN_ma_get_input.value.integer != 1 and self.bus.EN_ma_end_compression.value.integer != 1:
             #    yield EN_inp_edge
-            if((self.bus.EN_ma_get_input.value.integer == 1 and self.bus.RDY_ma_get_input.value.integer == 1) or 
-              (self.bus.EN_ma_end_compression.value.integer == 1 and self.bus.RDY_ma_end_compression.value.integer == 1) or 
+            if((self.bus.EN_ma_get_input.value.integer == 1 and self.bus.RDY_ma_get_input.value.integer == 1) or
+              (self.bus.EN_ma_end_compression.value.integer == 1 and self.bus.RDY_ma_end_compression.value.integer == 1) or
               (self.bus.EN_ma_start_compression.value.integer == 1 and self.bus.RDY_ma_start_compression.value.integer == 1)):
                 print('[IN_MON] {0:<25} : {1}'.format(
                     'ma_start_compression_word_width', self.bus.ma_start_compression_word_width.value.integer))
@@ -121,7 +121,7 @@ class InputMonitor(BusMonitor):
                 self._recv(vec)
 
             yield RisingEdge(self.clock)
-            #yield RisingEdge(self.clock)
+            # yield RisingEdge(self.clock)
             valid = False
 
 
@@ -240,7 +240,7 @@ class DUTScoreboard(Scoreboard):
         print(got.value[3])
         if(got.value[2] != exp.value[2]):
             print("Values mismatched")
-            exit(1)
+            #exit(1)
         else:
             print("Values matched")
 
@@ -311,21 +311,6 @@ class TestBench(object):
             self.compressed_word = 0
             self.compressed_zero_count = self.word_width | self.count_width << 4
         elif(EN_ma_end_compression == 1):
-            if(self.zero_counter != 0):
-                RDY_mav_send_compressed_value = 1
-                mav_send_compressed_value = self.compressed_zero_count | (self.counter << self.zero_counter) | ( 1 << 64)
-                self.zero_counter = 0
-                self.counter = 0
-                self.compressed_zero_count = 0
-                self.expected_output.append(OutputTransaction(self,
-                                                            RDY_ma_start_compression,
-                                                            RDY_ma_get_input,
-                                                            hex(mav_send_compressed_value),
-                                                            RDY_mav_send_compressed_value,
-                                                            RDY_ma_end_compression,
-                                                            mv_compression_done,
-                                                            RDY_mv_compression_done
-                                                            ))
             if(self.word_counter != 0):
                 RDY_mav_send_compressed_value = 1
                 mav_send_compressed_value = self.compressed_word
@@ -340,19 +325,113 @@ class TestBench(object):
                                                             mv_compression_done,
                                                             RDY_mv_compression_done
                                                             ))
+            if(self.zero_counter != 0):
+                temp_zero_count = self.zero_counter + self.count_width
+                if(temp_zero_count <= 64):
+                    RDY_mav_send_compressed_value = 1
+                    mav_send_compressed_value = self.compressed_zero_count | (self.counter << self.zero_counter) | (1 << 64)
+                    self.zero_counter = 0
+                    self.counter = 0
+                    self.compressed_zero_count = 0
+                    self.expected_output.append(OutputTransaction(self,
+                                                            RDY_ma_start_compression,
+                                                            RDY_ma_get_input,
+                                                            hex(mav_send_compressed_value),
+                                                            RDY_mav_send_compressed_value,
+                                                            RDY_ma_end_compression,
+                                                            mv_compression_done,
+                                                            RDY_mv_compression_done
+                                                            ))
+                else:
+                    temp_next_count = self.count_width - (temp_zero_count - 64)
+                    count_value = 2 ** self.count_width - 1
+                    count_index = 2 + self.count_width - temp_next_count
+                    self.compressed_zero_count = self.compressed_zero_count | (
+                    int(bin(count_value)[count_index:],2)  << self.zero_counter)
+                    RDY_mav_send_compressed_value = 1
+                    mav_send_compressed_value = self.compressed_zero_count | ( 1 << 64)
+                    self.expected_output.append(OutputTransaction(self,
+                                                                      RDY_ma_start_compression,
+                                                                      RDY_ma_get_input,
+                                                                      hex(mav_send_compressed_value),
+                                                                      RDY_mav_send_compressed_value,
+                                                                      RDY_ma_end_compression,
+                                                                      mv_compression_done,
+                                                                      RDY_mv_compression_done
+                                                                      ))
+                    
+                    mav_send_compressed_value = int(bin(count_value)[2:count_index],2) | (1 << 64)
+                    self.zero_counter = 0
+                    self.counter = 0
+                    self.compressed_zero_count = 0
+                    self.expected_output.append(OutputTransaction(self,
+                                                            RDY_ma_start_compression,
+                                                            RDY_ma_get_input,
+                                                            hex(mav_send_compressed_value),
+                                                            RDY_mav_send_compressed_value,
+                                                            RDY_ma_end_compression,
+                                                            mv_compression_done,
+                                                            RDY_mv_compression_done
+                                                            ))
+
+                
+            
         else:
             if(EN_ma_get_input == 1):
                 if(ma_get_input_val == 0):
                     if(self.counter == (2 ** self.count_width - 2)):
-                        self.counter = 1
-                        self.compressed_zero_count = self.compressed_zero_count | ((2 ** self.count_width - 1) << self.zero_counter)
-                        self.zero_counter = self.zero_counter + self.count_width
+                        if(self.count_width != 1):
+                            self.counter = 1
+                        temp_zero_count = self.zero_counter + self.count_width
+                        if(temp_zero_count <= 64):
+                            self.compressed_zero_count = self.compressed_zero_count | ((2 ** self.count_width - 1) << self.zero_counter)
+                            self.zero_counter = temp_zero_count
+                        else:
+                            temp_next_count = self.count_width - (temp_zero_count - 64)
+                            count_value = 2 ** self.count_width - 1
+                            count_index = 2 + self.count_width - temp_next_count
+                            self.compressed_zero_count = self.compressed_zero_count | (
+                            int(bin(count_value)[count_index:],2)  << self.zero_counter)
+                            RDY_mav_send_compressed_value = 1
+                            mav_send_compressed_value = self.compressed_zero_count | ( 1 << 64)
+                            self.expected_output.append(OutputTransaction(self,
+                                                                      RDY_ma_start_compression,
+                                                                      RDY_ma_get_input,
+                                                                      hex(mav_send_compressed_value),
+                                                                      RDY_mav_send_compressed_value,
+                                                                      RDY_ma_end_compression,
+                                                                      mv_compression_done,
+                                                                      RDY_mv_compression_done
+                                                                      ))
+                            self.zero_counter = self.count_width - temp_next_count
+                            self.compressed_zero_count = int(bin(count_value)[2:count_index],2)
                     else:
                         self.counter = self.counter + 1
                 else:
                     if(self.counter != 0):
-                        self.compressed_zero_count = self.compressed_zero_count | self.counter << self.zero_counter
-                        self.zero_counter = self.zero_counter + self.count_width
+                        temp_zero_count = self.zero_counter + self.count_width
+                        if(temp_zero_count <= 64):
+                            self.compressed_zero_count = self.compressed_zero_count | self.counter << self.zero_counter
+                            self.zero_counter = self.zero_counter + temp_zero_count
+                        else:
+                            temp_next_count = self.count_width - (temp_zero_count - 64)
+                            count_value = 2 ** self.count_width - 1
+                            count_index = 2 + self.count_width - temp_next_count
+                            self.compressed_zero_count = self.compressed_zero_count | (
+                            int(bin(count_value)[count_index:],2)  << self.zero_counter)
+                            RDY_mav_send_compressed_value = 1
+                            mav_send_compressed_value = self.compressed_zero_count | ( 1 << 64)
+                            self.expected_output.append(OutputTransaction(self,
+                                                                      RDY_ma_start_compression,
+                                                                      RDY_ma_get_input,
+                                                                      hex(mav_send_compressed_value),
+                                                                      RDY_mav_send_compressed_value,
+                                                                      RDY_ma_end_compression,
+                                                                      mv_compression_done,
+                                                                      RDY_mv_compression_done
+                                                                      ))
+                            self.zero_counter = self.count_width - temp_next_count
+                            self.compressed_zero_count = int(bin(count_value)[2:count_index],2)
                         self.counter = 0
                     ma_get_input_val = ma_get_input_val & ((2 ** (self.word_width * 4)) - 1)
                     self.compressed_word = self.compressed_word | (ma_get_input_val << (self.word_counter * 4))
@@ -479,13 +558,13 @@ def random_input_gen(tb):
     
 
 
-def enable_compression_output(tb):
+def enable_compression_output(tb,en_val):
     ma_start_compression_word_width = 0
     ma_start_compression_count_Width = 0
     ma_get_input_val = 0
     EN_ma_start_compression = 0
     EN_ma_get_input = 0
-    EN_ma_end_compression = 0
+    EN_ma_end_compression = en_val
     EN_mav_send_compressed_value = 1
     yield InputTransaction(tb,
                            ma_start_compression_word_width,
@@ -509,25 +588,14 @@ def enable_compression_output(tb):
                            )
 
 
-def enable_end_compression(tb):
+def enable_end_compression(tb,en_val):
     ma_start_compression_word_width = 0
     ma_start_compression_count_Width = 0
     ma_get_input_val = 0
     EN_ma_start_compression = 0
     EN_ma_get_input = 0
-    EN_ma_end_compression = 1
+    EN_ma_end_compression = en_val
     EN_mav_send_compressed_value = 0
-    yield InputTransaction(tb,
-                           ma_start_compression_word_width,
-                           ma_start_compression_count_Width,
-                           ma_get_input_val,
-                           EN_ma_start_compression,
-                           EN_ma_get_input,
-                           EN_ma_end_compression,
-                           EN_mav_send_compressed_value
-                           )
-
-    EN_ma_end_compression = 0
     yield InputTransaction(tb,
                            ma_start_compression_word_width,
                            ma_start_compression_count_Width,
@@ -560,23 +628,25 @@ def run_test(dut):
     cocotb.fork(clock_gen(dut.CLK))
     cocotb.fork(monitor_signals(dut))
     tb = TestBench(dut)
-    for n1 in range(1):
+    for n1 in range(20):
         print(" n1 = ", n1)
         dut.RST_N <= 0
         yield Timer(2)
         dut.RST_N <= 1
 
-        word_width = 2  # Can be randomised to pick only from the set 4(1), 8(2), 16(4), 32(8)
-        count_width = 4 # Choose only 1 , 2, 4, 8
+        word_width = 4  # Can be randomised to pick only from the set 4(1), 8(2), 16(4), 32(8)
+        count_width = random.randint(1,8) # Choose only 1 , 2, 4, 8
+        print("Count width : ", count_width)
+        tb.word_width = word_width
+        tb.count_width = count_width
+
         start_comp = start_compression(tb, word_width, count_width)
         for t in start_comp:
             yield tb.input_drv.send(t)
         yield RisingEdge(dut.CLK)
         yield RisingEdge(dut.CLK)
-        tb.word_width = word_width
-        tb.count_width = count_width
         n = 0
-        while(n < 1000):
+        while(n < 3000):
             print(" Start of the loop n = ", n)
             print(dut.RDY_ma_get_input)
             print(dut.RDY_mav_send_compressed_value)
@@ -587,21 +657,29 @@ def run_test(dut):
                 n = n+1
                 yield RisingEdge(dut.CLK)
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb)
+                output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
                 print(" End of the loop n = ", n)
 
-        end_comp = enable_end_compression(tb)
+        end_comp = enable_end_compression(tb,1)
         for t in end_comp:
             yield tb.input_drv.send(t)
         
-        output_enable = enable_compression_output(tb)
+        output_enable = enable_compression_output(tb,1)
         for t in output_enable:
             yield tb.input_drv.send(t)
 
-        output_enable = enable_compression_output(tb)
+        output_enable = enable_compression_output(tb,1)
         for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        end_comp = enable_end_compression(tb,0)
+        for t in end_comp:
             yield tb.input_drv.send(t)
 
         for n in range(20):
