@@ -76,19 +76,36 @@ def run_test(dut):
                 yield RisingEdge(dut.CLK)
                 # fsm_states_visited.append(cocotb.fork(monitor_signals(dut)))
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb)
+                output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
                 n = n-1 ##Enabling output is not considered as new input
 
-        end_comp = enable_end_compression(tb)
+        end_comp = enable_end_compression(tb,1)
+        for t in end_comp:
+            yield tb.input_drv.send(t)
+        
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        end_comp = enable_end_compression(tb,0)
         for t in end_comp:
             yield tb.input_drv.send(t)
 
-        for n in range(10):
+        for n in range(20):
             yield RisingEdge(dut.CLK)
 
         yield RisingEdge(dut.CLK)
+
 
         # calculate the reward
         coverage.sort()
@@ -104,7 +121,7 @@ def run_test(dut):
     plt.hist(chosen_actions)
     plt.title("Stochastic input - Histogram of probability of zero in the activation map\n")
     plt.tight_layout()
-    plt.savefig('./hist_of_actions' + suffix + '.png')
+    plt.savefig('./new_hist_of_actions' + suffix + '.png')
     plt.close()
 
     state_list = []
@@ -122,5 +139,5 @@ def run_test(dut):
     plt.tight_layout()
     # plt.hist(state_list)
     plt.title("Stochastic input - Histogram of covered states\n")
-    plt.savefig('./hist_of_coverage' + suffix + '.png')
+    plt.savefig('./new_hist_of_coverage' + suffix + '.png')
     plt.close()

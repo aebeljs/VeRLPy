@@ -1,0 +1,6 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1610957979" />
+    <testcase classname="test_1state_probab_RL_rle_compression" name="run_test" ratio_time="2.810908610626148" sim_time_ns="2296.405" time="816.9618148803711" />
+  </testsuite>
+</testsuites>

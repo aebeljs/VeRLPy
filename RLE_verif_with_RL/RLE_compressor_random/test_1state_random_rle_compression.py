@@ -33,7 +33,7 @@ def run_test(dut):
     count_width = 6 # count_width = random.randint(1,8)
 
     cocotb.fork(clock_gen(dut.CLK))
-    cocotb.fork(monitor_signals(dut))
+    cocotb.fork(monitor_signals(dut)) # tracks states covered
 
     chosen_actions = []
     coverage_list = []
@@ -53,8 +53,11 @@ def run_test(dut):
         dut.RST_N <= 1
 
         # print("coverage len", len(coverage))
-        coverage.clear()
+        #coverage.clear()
 
+        coverage.clear()
+        tb.word_width = word_width
+        tb.count_width = count_width
         start_comp = start_compression(tb,word_width,count_width)
         for t in start_comp:
             yield tb.input_drv.send(t)
@@ -69,56 +72,79 @@ def run_test(dut):
 
         # take action
         # number of non-zero activation map elements at the start
-        for n in range(I):
+        n = 0
+        while(n < I):
             if(dut.RDY_ma_get_input == 1):
                 input_gen = random_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
+                n=n+1
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb)
+                output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 # Enabling output is not considered as new input
+                #n = n-1 Enabling output is not considered as new input
 
         # RL generated number of consecutive 0s
-        for n in range(Z):
+        n=0
+        while(n < Z):
             # generate consecutive 0s
             if(dut.RDY_ma_get_input == 1):
                 input_gen = zero_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
+                n=n+1
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb)
+                output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 # Enabling output is not considered as new input
+                #n = n-1 Enabling output is not considered as new input
 
         # remaining non-zero elements in the activation map
-        for n in range(N - Z - I):
+        n=0
+        while( n < N - Z - I):
             if(dut.RDY_ma_get_input == 1):
                 input_gen = random_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
+                n = n + 1
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb)
+                output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 # Enabling output is not considered as new input
+                #n = n-1  Enabling output is not considered as new input
 
-        end_comp = enable_end_compression(tb)
+        end_comp = enable_end_compression(tb,1)
+        for t in end_comp:
+            yield tb.input_drv.send(t)
+        
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        end_comp = enable_end_compression(tb,0)
         for t in end_comp:
             yield tb.input_drv.send(t)
 
-        for n in range(10):
+        for n in range(20):
             yield RisingEdge(dut.CLK)
 
         yield RisingEdge(dut.CLK)
+
 
         # calculate the reward
         coverage.sort()

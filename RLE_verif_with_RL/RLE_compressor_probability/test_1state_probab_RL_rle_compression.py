@@ -79,7 +79,7 @@ def run_test(dut):
     curr_state = init_state
 
     suffix = "_N=" + str(N) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
-
+    suffix1 = "_0_and_rarely_visted_"
     tb = TestBench(dut)
     Q_val_list = []
     for i in range(NUM_EPISODES):
@@ -120,19 +120,36 @@ def run_test(dut):
                 yield RisingEdge(dut.CLK)
                 # fsm_states_visited.append(cocotb.fork(monitor_signals(dut)))
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb)
+                output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
                 n = n-1 ##Enabling output is not considered as new input
 
-        end_comp = enable_end_compression(tb)
+        end_comp = enable_end_compression(tb,1)
+        for t in end_comp:
+            yield tb.input_drv.send(t)
+        
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        end_comp = enable_end_compression(tb,0)
         for t in end_comp:
             yield tb.input_drv.send(t)
 
-        for n in range(10):
+        for n in range(20):
             yield RisingEdge(dut.CLK)
 
         yield RisingEdge(dut.CLK)
+
 
         # calculate the reward
         coverage.sort()
@@ -204,8 +221,8 @@ def run_test(dut):
     # plot results
     plt.hist(chosen_actions)
     plt.tight_layout()
-    plt.title("Stochastic input using RL- Histogram of Pr(0) in the activation map\n" + "Reward scheme: 0100")
-    plt.savefig('./hist_of_actions_0100' + suffix + '.png')
+    plt.title("Stochastic input using RL- Histogram of Pr(0) in the activation map\n" + "Reward scheme:"+suffix1)
+    plt.savefig('./new_hist_of_actions'+suffix1 + suffix + '.png')
     plt.close()
 
     state_list = []
@@ -222,8 +239,8 @@ def run_test(dut):
     plt.xticks(rotation = 90)
     plt.tight_layout()
     # plt.hist(state_list)
-    plt.title("Stochastic input using RL - Histogram of covered states\n" + "Reward scheme: 0100")
-    plt.savefig('./hist_of_coverage_0100' + suffix + '.png')
+    plt.title("Stochastic input using RL - Histogram of covered states\n" + "Reward scheme:"+suffix1)
+    plt.savefig('./new_hist_of_coverage'+suffix1 + suffix + '.png')
     plt.close()
 
 def get_action(curr_state, net, action_tensor, steps_done):
@@ -234,7 +251,12 @@ def get_action(curr_state, net, action_tensor, steps_done):
     sample = random.random()
     # schedule the epsilon
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
-        math.exp(-1. * steps_done / EPS_DECAY)
+        math.exp(-1 * steps_done / EPS_DECAY)
+    '''
+    if(steps_done<(EPS_DECAY/3)):
+        eps_threshold = EPS_END + (EPS_START - EPS_END) * \
+        math.exp(-0.1 * steps_done / EPS_DECAY)
+    '''
     print("epsilon: ", eps_threshold)
 
     # choose epsilon-greedily
@@ -252,35 +274,35 @@ def get_reward_based_on_states_visited(coverage):
     reward = 0
     for visited_state in coverage:
         if(visited_state == [0, 0, 0, 0]):
-            reward += 1
+            reward += 0
         if(visited_state == [0, 0, 0, 1]):
-            reward += 1
+            reward += 0
         if(visited_state == [0, 0, 1, 0]):
-            reward += 1
+            reward += 0  #50 freq
         if(visited_state == [0, 0, 1, 1]):
-            reward += 1
+            reward += 20 #not visited
         if(visited_state == [0, 1, 0, 0]):
-            reward += 20
+            reward += 0
         if(visited_state == [0, 1, 0, 1]):
-            reward += 1
+            reward += 0
         if(visited_state == [0, 1, 1, 0]):
-            reward += 1
+            reward += 20 #1 freq
         if(visited_state == [0, 1, 1, 1]):
-            reward += 1
+            reward += 20 #not visited
         if(visited_state == [1, 0, 0, 0]):
-            reward += 1
+            reward += 0
         if(visited_state == [1, 0, 0, 1]):
-            reward += 1
+            reward += 0 #100 freq
         if(visited_state == [1, 0, 1, 0]):
-            reward += 1
+            reward += 20  #5 freq
         if(visited_state == [1, 0, 1, 1]):
-            reward += 1
+            reward += 20 #not visited
         if(visited_state == [1, 1, 0, 0]):
-            reward += 1
+            reward += 0
         if(visited_state == [1, 1, 0, 1]):
-            reward += 1
+            reward += 0  #100 freq
         if(visited_state == [1, 1, 1, 0]):
-            reward += 1
+            reward += 20  #5 freq
         if(visited_state == [1, 1, 1, 1]):
-            reward += 1
+            reward += 20 #not visited
     return reward
