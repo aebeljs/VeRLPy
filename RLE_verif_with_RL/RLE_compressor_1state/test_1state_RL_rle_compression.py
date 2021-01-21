@@ -28,7 +28,7 @@ def monitor_signals(dut):
 @cocotb.test()
 def run_test(dut):
     CAP = 1000
-    NUM_EPISODES = 1000
+    NUM_EPISODES = 100
     BATCH_SIZE = 8
     ETA = 1e-4
     global EPS_START
@@ -68,8 +68,13 @@ def run_test(dut):
     global word_width
     global count_width
 
-    word_width = 4 #Can be randomised to pick only from the set 1, 2, 4, 8
-    count_width = 6 # count_width = random.randint(1,8)
+    word_width = 4
+    #count_width = random.randint(1,8)
+    count_width = 6
+
+    #word_width = 4 #Can be randomised to pick only from the set 1, 2, 4, 8
+    
+    #count_width = 6 # count_width = random.randint(1,8)
 
     cocotb.fork(clock_gen(dut.CLK))
     cocotb.fork(monitor_signals(dut)) # tracks states covered
@@ -91,8 +96,12 @@ def run_test(dut):
         yield Timer(2)
         dut.RST_N <= 1
 
-        coverage.clear()
+        #word_width = 4
+        #count_width = random.randint(1,8)
 
+        coverage.clear()
+        tb.word_width = word_width
+        tb.count_width = count_width
         start_comp = start_compression(tb,word_width,count_width)
         for t in start_comp:
             yield tb.input_drv.send(t)
@@ -114,53 +123,66 @@ def run_test(dut):
                 input_gen = random_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
+                n=n+1
                 yield RisingEdge(dut.CLK)
-                n += 1
 
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb)
+                output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                # n = n-1 # Enabling output is not considered as new input
 
         # RL generated number of consecutive 0s
-        n = 0
+        n=0
         while(n < Z):
             # generate consecutive 0s
             if(dut.RDY_ma_get_input == 1):
                 input_gen = zero_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
+                n=n+1
                 yield RisingEdge(dut.CLK)
-                n += 1
 
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb)
+                output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                # n = n-1 # Enabling output is not considered as new input
 
         # remaining non-zero elements in the activation map
-        n = 0
-        while(n < (N - Z - I)):
+        n=0
+        while( n < N - Z - I):
             if(dut.RDY_ma_get_input == 1):
                 input_gen = random_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
+                n = n + 1
                 yield RisingEdge(dut.CLK)
-                n += 1
 
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb)
+                output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                # n = n-1 # Enabling output is not considered as new input
 
-        end_comp = enable_end_compression(tb)
+        end_comp = enable_end_compression(tb,1)
+        for t in end_comp:
+            yield tb.input_drv.send(t)
+        
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        end_comp = enable_end_compression(tb,0)
         for t in end_comp:
             yield tb.input_drv.send(t)
 
-        for n in range(10):
+        for n in range(20):
             yield RisingEdge(dut.CLK)
 
         yield RisingEdge(dut.CLK)
@@ -236,7 +258,7 @@ def run_test(dut):
     # plot results
     plt.hist(chosen_actions)
     plt.title("1 state RL - Histogram of consecutive zeros in the activation map\n" + "Reward scheme: 0100")
-    plt.savefig('./hist_of_actions_1100_0101' + suffix + '.png')
+    plt.savefig('./hist_of_actions_1001_1101' + suffix + '.png')
     plt.close()
 
     state_list = []
@@ -246,7 +268,7 @@ def run_test(dut):
 
     plt.hist(state_list)
     plt.title("1 state RL - Histogram of covered states\n" + "Reward scheme: 0100")
-    plt.savefig('./hist_of_coverage_1100_0101' + suffix + '.png')
+    plt.savefig('./hist_of_coverage_1001_1101' + suffix + '.png')
     plt.close()
 
 def get_action(curr_state, net, action_tensor, steps_done):
@@ -281,29 +303,29 @@ def get_reward_based_on_states_visited(coverage):
         if(visited_state == [0, 0, 1, 0]):
             reward += 1
         if(visited_state == [0, 0, 1, 1]):
-            reward += 1
+            reward += 100
         if(visited_state == [0, 1, 0, 0]):
-            reward += 1
+            reward += 100
         if(visited_state == [0, 1, 0, 1]):
-            reward += 10
+            reward += 1
         if(visited_state == [0, 1, 1, 0]):
-            reward += 1
+            reward += 100
         if(visited_state == [0, 1, 1, 1]):
-            reward += 1
+            reward += 100
         if(visited_state == [1, 0, 0, 0]):
             reward += 1
         if(visited_state == [1, 0, 0, 1]):
-            reward += 1
+            reward += 100  #this was 10
         if(visited_state == [1, 0, 1, 0]):
-            reward += 1
+            reward += 100
         if(visited_state == [1, 0, 1, 1]):
-            reward += 1
+            reward += 100
         if(visited_state == [1, 1, 0, 0]):
-            reward += 10
+            reward += 1
         if(visited_state == [1, 1, 0, 1]):
-            reward += 1
+            reward += 100  #this was 10
         if(visited_state == [1, 1, 1, 0]):
-            reward += 1
+            reward += 100
         if(visited_state == [1, 1, 1, 1]):
-            reward += 1
+            reward += 100
     return reward

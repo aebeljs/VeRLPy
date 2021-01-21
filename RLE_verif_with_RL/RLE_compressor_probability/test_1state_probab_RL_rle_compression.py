@@ -8,7 +8,6 @@ from test_rle_compression_cocotb import *
 import itertools
 import matplotlib.pyplot as plt
 import sys
-import numpy as np
 
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -30,7 +29,7 @@ def monitor_signals(dut):
 def run_test(dut):
     CAP = 1000
     NUM_EPISODES = 1000
-    BATCH_SIZE = 64
+    BATCH_SIZE = 8
     ETA = 1e-4
     global EPS_START
     global EPS_DECAY
@@ -38,7 +37,7 @@ def run_test(dut):
     EPS_START = 0.9
     EPS_END = 0.05
     EPS_DECAY = 500
-    TARGET_UPDATE = 10
+    TARGET_UPDATE = 5
     N_state = 0
     N_action = 1
     replay_buffer = ReplayMemory(CAP)
@@ -80,9 +79,9 @@ def run_test(dut):
     curr_state = init_state
 
     suffix = "_N=" + str(N) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
-
+    suffix1 = "_0_and_rarely_visted_"
     tb = TestBench(dut)
-    loss_list = []
+    Q_val_list = []
     for i in range(NUM_EPISODES):
         print("-----------------------------------------------")
         print("Epsiode number: ", i)
@@ -108,8 +107,7 @@ def run_test(dut):
         chosen_actions.append(Z.item())
 
         # take action
-        n = 0
-        while(n < N):
+        for n in range(N):
             # generate consecutive 0s
             if(dut.RDY_ma_get_input == 1):
                 sample = random.random()
@@ -120,22 +118,38 @@ def run_test(dut):
                 for t in input_gen:
                     yield tb.input_drv.send(t)
                 yield RisingEdge(dut.CLK)
-                n += 1
                 # fsm_states_visited.append(cocotb.fork(monitor_signals(dut)))
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb)
+                output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                # n = n-1 ##Enabling output is not considered as new input
+                n = n-1 ##Enabling output is not considered as new input
 
-        end_comp = enable_end_compression(tb)
+        end_comp = enable_end_compression(tb,1)
+        for t in end_comp:
+            yield tb.input_drv.send(t)
+        
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        end_comp = enable_end_compression(tb,0)
         for t in end_comp:
             yield tb.input_drv.send(t)
 
-        for n in range(10):
+        for n in range(20):
             yield RisingEdge(dut.CLK)
 
         yield RisingEdge(dut.CLK)
+
 
         # calculate the reward
         coverage.sort()
@@ -178,7 +192,6 @@ def run_test(dut):
 
         loss = criterion(Q_values, reward_batch)
         print("loss: ", loss)
-        loss_list.append(loss)
         loss.backward()
 
         # clamp gradients values
@@ -198,52 +211,18 @@ def run_test(dut):
         if (i % TARGET_UPDATE) == 0:
             target_net.load_state_dict(policy_net.state_dict())
 
-        if((i + 1) % 200 == 0):
-            x = norm_action_tensor * std + mean
-            y = target_net(norm_action_tensor)
-            x = x.detach().numpy()
-            y = y.detach().numpy()
-            plt.plot(x, y, label=str(i+1)+' eps')
+    print("Learned Q function:")
+    for x_ in range(len(norm_action_tensor)):
+        test_ = norm_action_tensor[x_]
+        print(test_ * std + mean, target_net(test_))
 
     tb.stop()
-    # print("Learned Q function:")
-    # for x_ in range(len(norm_action_tensor)):
-    #     test_ = norm_action_tensor[x_]
-    #     print(test_ * std + mean, target_net(test_))
-
-    # x = norm_action_tensor * std + mean
-    # y = target_net(norm_action_tensor)
-    # x = x.detach().numpy()
-    # y = y.detach().numpy()
-    # plt.plot(x, y)
-    plt.legend()
-    plt.grid()
-    plt.title("Learned Q-function")
-    plt.xlabel("Actions")
-    plt.ylabel("Q-value")
-    # plt.show()
-    plt.savefig('./Q_function_R=0_0100' + suffix + '.png')
-    plt.close()
-
-    plt.plot(np.log(loss_list))
-    plt.title("Training log loss")
-    plt.grid()
-    # plt.show()
-    plt.savefig('./log_loss_plot_R=0_0100' + suffix + '.png')
-    plt.close()
-
-    plt.plot(loss_list)
-    plt.title("Training loss")
-    plt.grid()
-    # plt.show()
-    plt.savefig('./loss_plot_R=0_0100' + suffix + '.png')
-    plt.close()
 
     # plot results
     plt.hist(chosen_actions)
     plt.tight_layout()
-    plt.title("Stochastic input using RL- Histogram of Pr(0) in the activation map\n" + "Reward scheme: 0100")
-    plt.savefig('./hist_of_actions_R=0_0100' + suffix + '.png')
+    plt.title("Stochastic input using RL- Histogram of Pr(0) in the activation map\n" + "Reward scheme:"+suffix1)
+    plt.savefig('./new_hist_of_actions'+suffix1 + suffix + '.png')
     plt.close()
 
     state_list = []
@@ -260,8 +239,8 @@ def run_test(dut):
     plt.xticks(rotation = 90)
     plt.tight_layout()
     # plt.hist(state_list)
-    plt.title("Stochastic input using RL - Histogram of covered states\n" + "Reward scheme: 0100")
-    plt.savefig('./hist_of_coverage_R=0_0100' + suffix + '.png')
+    plt.title("Stochastic input using RL - Histogram of covered states\n" + "Reward scheme:"+suffix1)
+    plt.savefig('./new_hist_of_coverage'+suffix1 + suffix + '.png')
     plt.close()
 
 def get_action(curr_state, net, action_tensor, steps_done):
@@ -272,7 +251,12 @@ def get_action(curr_state, net, action_tensor, steps_done):
     sample = random.random()
     # schedule the epsilon
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
-        math.exp(-1. * steps_done / EPS_DECAY)
+        math.exp(-1 * steps_done / EPS_DECAY)
+    '''
+    if(steps_done<(EPS_DECAY/3)):
+        eps_threshold = EPS_END + (EPS_START - EPS_END) * \
+        math.exp(-0.1 * steps_done / EPS_DECAY)
+    '''
     print("epsilon: ", eps_threshold)
 
     # choose epsilon-greedily
@@ -294,31 +278,31 @@ def get_reward_based_on_states_visited(coverage):
         if(visited_state == [0, 0, 0, 1]):
             reward += 0
         if(visited_state == [0, 0, 1, 0]):
-            reward += 0
+            reward += 0  #50 freq
         if(visited_state == [0, 0, 1, 1]):
-            reward += 0
+            reward += 20 #not visited
         if(visited_state == [0, 1, 0, 0]):
-            reward += 10
+            reward += 0
         if(visited_state == [0, 1, 0, 1]):
             reward += 0
         if(visited_state == [0, 1, 1, 0]):
-            reward += 0
+            reward += 20 #1 freq
         if(visited_state == [0, 1, 1, 1]):
-            reward += 0
+            reward += 20 #not visited
         if(visited_state == [1, 0, 0, 0]):
             reward += 0
         if(visited_state == [1, 0, 0, 1]):
-            reward += 0
+            reward += 0 #100 freq
         if(visited_state == [1, 0, 1, 0]):
-            reward += 0
+            reward += 20  #5 freq
         if(visited_state == [1, 0, 1, 1]):
-            reward += 0
+            reward += 20 #not visited
         if(visited_state == [1, 1, 0, 0]):
             reward += 0
         if(visited_state == [1, 1, 0, 1]):
-            reward += 0
+            reward += 0  #100 freq
         if(visited_state == [1, 1, 1, 0]):
-            reward += 0
+            reward += 20  #5 freq
         if(visited_state == [1, 1, 1, 1]):
-            reward += 0
+            reward += 20 #not visited
     return reward

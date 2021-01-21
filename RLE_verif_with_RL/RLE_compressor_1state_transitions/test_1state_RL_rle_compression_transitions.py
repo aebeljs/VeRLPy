@@ -80,6 +80,8 @@ def run_test(dut):
 
     suffix = "_N=" + str(N) + ",I=" + str(I) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
 
+    suffix1="_1000-1100_"
+
     tb = TestBench(dut)
     Q_val_list = []
     for i in range(NUM_EPISODES):
@@ -108,59 +110,69 @@ def run_test(dut):
 
         # take action
         # number of non-zero activation map elements at the start
-        n = 0
-        while(n < I):
+        for n in range(I):
             if(dut.RDY_ma_get_input == 1):
                 input_gen = random_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
                 yield RisingEdge(dut.CLK)
-                n += 1
 
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb)
+                output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                # n = n-1 # Enabling output is not considered as new input
+                n = n-1 # Enabling output is not considered as new input
 
         # RL generated number of consecutive 0s
-        n = 0
-        while(n < Z):
+        for n in range(Z):
             # generate consecutive 0s
             if(dut.RDY_ma_get_input == 1):
                 input_gen = zero_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
                 yield RisingEdge(dut.CLK)
-                n += 1
 
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb)
+                output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                # n = n-1 # Enabling output is not considered as new input
+                n = n-1 # Enabling output is not considered as new input
 
         # remaining non-zero elements in the activation map
-        n = 0
-        while(n < (N - Z - I)):
+        for n in range(N - Z - I):
             if(dut.RDY_ma_get_input == 1):
                 input_gen = random_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
                 yield RisingEdge(dut.CLK)
-                n += 1
 
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb)
+                output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                # n = n-1 # Enabling output is not considered as new input
+                n = n-1 # Enabling output is not considered as new input
 
-        end_comp = enable_end_compression(tb)
+        end_comp = enable_end_compression(tb,1)
+        for t in end_comp:
+            yield tb.input_drv.send(t)
+        
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        end_comp = enable_end_compression(tb,0)
         for t in end_comp:
             yield tb.input_drv.send(t)
 
-        for n in range(10):
+        for n in range(20):
             yield RisingEdge(dut.CLK)
 
         yield RisingEdge(dut.CLK)
@@ -238,14 +250,14 @@ def run_test(dut):
     for x_ in range(len(action_tensor)):
         test_ = torch.ones((1))
         test_[0] = (x_ - mean) / std
-        print(test_, target_net(test_))
+        print((test_*std)+mean, target_net(test_))
 
     tb.stop()
 
     # plot results
     plt.hist(chosen_actions)
-    plt.title("1 state RL - Histogram of consecutive zeros in the activation map\n" + "Reward scheme: 0000-1100")
-    plt.savefig('./hist_of_actions_0000-1100' + suffix + '.png')
+    plt.title("1 state RL - Histogram of consecutive zeros in the activation map\n" + "Reward scheme: "+suffix1)
+    plt.savefig('./hist_of_actions_'+suffix1 + suffix + '.png')
     plt.close()
 
     coverage_list.sort()
@@ -256,8 +268,8 @@ def run_test(dut):
     plt.grid()
     plt.xticks(rotation = 90)
     plt.tight_layout()
-    plt.title("1 state RL - Histogram of covered state transitions\n" + "Reward scheme: 0000-1100")
-    plt.savefig('./hist_of_coverage_0000-1100' + suffix + '.png')
+    plt.title("1 state RL - Histogram of covered state transitions\n" + "Reward scheme: "+suffix1)
+    plt.savefig('./hist_of_coverage_'+suffix1 + suffix + '.png')
     plt.close()
 
 def get_action(curr_state, net, action_tensor, steps_done):
@@ -285,8 +297,35 @@ def get_action(curr_state, net, action_tensor, steps_done):
 def get_reward_based_on_states_visited(coverage):
     reward = 0
     for visited_state in coverage:
-        if(visited_state == '0000-1100'):
-            reward += 10
+        #visited with freq=50
+        if(visited_state == '0001-0001'):
+            reward += 0
+        elif(visited_state == '0101-1101'):
+            reward += 0
+        elif(visited_state == '1001-0001'):
+            reward += 0
+        elif(visited_state == '1001-1001'):
+            reward += 0
+        #visited with freq~200
+        elif(visited_state == '0000-1101'):
+            reward += 0#200
+        elif(visited_state == '1101-1101'):#
+            reward += 0#200
+        elif(visited_state == '1001-1000'):
+            reward += 0 #200
+        
+        #visited with freq=100
+        elif(visited_state == '1000-1100'):
+            reward += 20 #100
+        
+        #visited with freq=0
+        elif(visited_state == '0000-0011'):
+            reward += 20 #0
+        elif(visited_state == '0000-0001'):
+            reward += 20 #0
+        elif(visited_state == '1000-1101'):
+            reward += 20 #0
+
         else:
-            reward += 1
+            reward += 0
     return reward
