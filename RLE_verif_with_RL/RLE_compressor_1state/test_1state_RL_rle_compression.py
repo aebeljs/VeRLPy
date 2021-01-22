@@ -84,7 +84,7 @@ def run_test(dut):
     curr_state = init_state
 
     suffix = "_N=" + str(N) + ",I=" + str(I) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
-    suffix1 = "_1001_1101_"
+    suffix1 = "_0010_"
     tb = TestBench(dut)
     Q_val_list = []
     for i in range(NUM_EPISODES):
@@ -297,35 +297,35 @@ def get_reward_based_on_states_visited(coverage):
     reward = 0
     for visited_state in coverage:
         if(visited_state == [0, 0, 0, 0]):
-            reward += 0
+            reward += 0#
         if(visited_state == [0, 0, 0, 1]):
             reward += 0
         if(visited_state == [0, 0, 1, 0]):
-            reward += 0
+            reward += 10
         if(visited_state == [0, 0, 1, 1]):
-            reward += 50
+            reward += 20
         if(visited_state == [0, 1, 0, 0]):
-            reward += 50
+            reward += 0#
         if(visited_state == [0, 1, 0, 1]):
             reward += 0
         if(visited_state == [0, 1, 1, 0]):
-            reward += 50
+            reward += 20
         if(visited_state == [0, 1, 1, 1]):
-            reward += 50
+            reward += 0
         if(visited_state == [1, 0, 0, 0]):
-            reward += 0
+            reward += 0#
         if(visited_state == [1, 0, 0, 1]):
-            reward += 20  #this was 10
-        if(visited_state == [1, 0, 1, 0]):
-            reward += 50
-        if(visited_state == [1, 0, 1, 1]):
-            reward += 50
-        if(visited_state == [1, 1, 0, 0]):
             reward += 0
+        if(visited_state == [1, 0, 1, 0]):
+            reward += 20
+        if(visited_state == [1, 0, 1, 1]):
+            reward += 0
+        if(visited_state == [1, 1, 0, 0]):
+            reward += 0#
         if(visited_state == [1, 1, 0, 1]):
-            reward += 20  #this was 10
+            reward += 0
         if(visited_state == [1, 1, 1, 0]):
-            reward += 50
+            reward += 0
         if(visited_state == [1, 1, 1, 1]):
-            reward += 50
+            reward += 0
     return reward

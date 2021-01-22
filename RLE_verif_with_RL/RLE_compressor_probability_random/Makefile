@@ -38,6 +38,6 @@ ifeq ($(TOPLEVEL_LANG),verilog)
 endif
 
 TOPLEVEL := mkrle_compression
-MODULE   := test_1state_RL_rle_compression
+MODULE   := test_1state_probab_random_rle_compression
 
 include $(shell cocotb-config --makefiles)/Makefile.sim
