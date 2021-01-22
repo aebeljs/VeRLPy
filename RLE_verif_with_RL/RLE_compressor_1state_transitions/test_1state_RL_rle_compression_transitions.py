@@ -298,33 +298,36 @@ def get_reward_based_on_states_visited(coverage):
     reward = 0
     for visited_state in coverage:
         #visited with freq=50
-        if(visited_state == '0001-0001'):
-            reward += 0
-        elif(visited_state == '0101-1101'):
-            reward += 0
-        elif(visited_state == '1001-0001'):
-            reward += 0
-        elif(visited_state == '1001-1001'):
-            reward += 0
+        if(visited_state == '0010-0100'):
+            reward += 20
+        elif(visited_state == '0010-1000'):
+            reward += 20
+        elif(visited_state == '0010-1100'):
+            reward += 20
+        elif(visited_state == '0100-0010'):
+            reward += 20
         #visited with freq~200
-        elif(visited_state == '0000-1101'):
-            reward += 0#200
-        elif(visited_state == '1101-1101'):#
-            reward += 0#200
-        elif(visited_state == '1001-1000'):
-            reward += 0 #200
+        elif(visited_state == '0100-1000'):
+            reward += 20#200
+        elif(visited_state == '0100-1100'):#
+            reward += 20#200
+        elif(visited_state == '1000-0010'):
+            reward += 20 #200
+        elif(visited_state == '1000-0100'):
+            reward += 20
+        elif(visited_state == '1100-0000'):
+            reward += 20
+        elif(visited_state == '1100-0010'):
+            reward += 20
+        #visited with freq~200
+        elif(visited_state == '1100-1000'):
+            reward += 20#200
+        elif(visited_state == '1100-1100'):#
+            reward += 20#200
         
         #visited with freq=100
         elif(visited_state == '1000-1100'):
             reward += 20 #100
-        
-        #visited with freq=0
-        elif(visited_state == '0000-0011'):
-            reward += 20 #0
-        elif(visited_state == '0000-0001'):
-            reward += 20 #0
-        elif(visited_state == '1000-1101'):
-            reward += 20 #0
 
         else:
             reward += 0

@@ -15,7 +15,7 @@ package rle_compression;
 
     function Bit#(8) fn_max_zero_count(Bit#(4) width);
         if(width == 1)
-            return 0;
+            return 1;
         else if(width == 2)
             return 3;
         else if(width == 3)
@@ -79,16 +79,17 @@ package rle_compression;
                 rg_next_word <= wr_append_count; // rg_counter
             end
             else begin       
+                if(rg_next_count != 0) begin
+                    temp_index_count = rg_count_width - zeroExtend(rg_next_count);
+                    rg_next_count <= 0;
+                    rg_next_word <= 0;
+                    temp_word_count = zeroExtend(rg_next_count);
+                    temp_update_count = zeroExtend(temp_index_count);
+                end
                 if(wr_last_count)
                     rg_zero_counter <= 64;
                 else          
                     rg_zero_counter <= temp_update_count;
-                if(rg_next_count != 0) begin
-                    temp_index_count = zeroExtend(rg_next_count);
-                    rg_next_count <= 0;
-                    rg_next_word <= 0;
-                    temp_word_count = 8 - zeroExtend(rg_next_count);
-                end
             end
             rg_compressed_count[temp_count] <= wr_append_count[temp_word_count];
             if(temp_index_count > 1)
@@ -110,7 +111,6 @@ package rle_compression;
         rule rl_append_next_count(rg_zero_counter == 0 && rg_next_count != 0);
             wr_append_zero <= True;
             wr_append_count <= rg_next_word;
-            rg_counter <= 0;
             wr_last_count <= False;
         endrule
 
@@ -134,7 +134,8 @@ package rle_compression;
                     wr_append_zero <= True;
                     wr_append_count <= temp;
                     wr_last_count <= False;
-                    rg_counter <= 1;
+                    if(rg_count_width != 1)
+                        rg_counter <= 1;
                 end
                 else 
                     rg_counter <= rg_counter + 1;
@@ -150,9 +151,17 @@ package rle_compression;
         method ActionValue#(Tuple2#(Bool,Bit#(64))) mav_send_compressed_value if(rg_word_counter == 16 || rg_zero_counter == 64);
             Vector#(64,Bit#(1)) lv_count;
             Vector#(16,Bit#(4)) lv_word;
-            Bit#(64) lv_output;
+            Bit#(64) lv_output = 0;
             Bool temp_zero = False;
-            if(rg_zero_counter == 64) begin
+            if(rg_word_counter == 16) begin
+                for(Integer i=0; i<16; i=i+1) begin
+                    lv_word[i] = rg_compressed_word[i];
+                    rg_compressed_word[i] <= 0;
+                end
+                rg_word_counter <= 0;
+                lv_output = pack(lv_word);
+            end
+            else if(rg_zero_counter == 64) begin
                 for(Integer i=0; i<64; i=i+1) begin
                     lv_count[i] = rg_compressed_count[i];
                     rg_compressed_count[i] <= 0;
@@ -160,14 +169,6 @@ package rle_compression;
                 rg_zero_counter <= 0;
                 temp_zero = True;
                 lv_output = pack(lv_count);
-            end
-            else begin
-                for(Integer i=0; i<16; i=i+1) begin
-                    lv_word[i] = rg_compressed_word[i];
-                    rg_compressed_word[i] <= 0;
-                end
-                rg_word_counter <= 0;
-                lv_output = pack(lv_word);
             end
             return tuple2(temp_zero,pack(lv_output));
         endmethod
@@ -177,7 +178,10 @@ package rle_compression;
                     wr_append_zero <= True;
                     wr_append_count <= rg_counter;
                     wr_last_count <= True;
+                    rg_counter <= 0;
                 end
+                else
+                    rg_zero_counter <= 64;
             if(rg_word_counter != 0)
                 rg_word_counter <= 16;
         endmethod
