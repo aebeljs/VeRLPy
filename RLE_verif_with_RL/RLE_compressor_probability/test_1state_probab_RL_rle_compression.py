@@ -274,35 +274,35 @@ def get_reward_based_on_states_visited(coverage):
     reward = 0
     for visited_state in coverage:
         if(visited_state == [0, 0, 0, 0]):
-            reward += 0
+            reward += 0 #1000 freq
         if(visited_state == [0, 0, 0, 1]):
             reward += 0
         if(visited_state == [0, 0, 1, 0]):
-            reward += 0  #50 freq
+            reward += 20 #50 freq
         if(visited_state == [0, 0, 1, 1]):
-            reward += 20 #not visited
+            reward += 20 #branch
         if(visited_state == [0, 1, 0, 0]):
-            reward += 0
+            reward += 0 #1000 freq
         if(visited_state == [0, 1, 0, 1]):
             reward += 0
         if(visited_state == [0, 1, 1, 0]):
-            reward += 20 #1 freq
+            reward += 20 #branch
         if(visited_state == [0, 1, 1, 1]):
-            reward += 20 #not visited
+            reward += 0 
         if(visited_state == [1, 0, 0, 0]):
-            reward += 0
+            reward += 0 #1000 freq
         if(visited_state == [1, 0, 0, 1]):
-            reward += 0 #100 freq
-        if(visited_state == [1, 0, 1, 0]):
-            reward += 20  #5 freq
-        if(visited_state == [1, 0, 1, 1]):
-            reward += 20 #not visited
-        if(visited_state == [1, 1, 0, 0]):
             reward += 0
+        if(visited_state == [1, 0, 1, 0]):
+            reward += 20 #branch
+        if(visited_state == [1, 0, 1, 1]):
+            reward += 0
+        if(visited_state == [1, 1, 0, 0]):
+            reward += 0 #350 freq
         if(visited_state == [1, 1, 0, 1]):
-            reward += 0  #100 freq
+            reward += 0
         if(visited_state == [1, 1, 1, 0]):
-            reward += 20  #5 freq
+            reward += 0
         if(visited_state == [1, 1, 1, 1]):
-            reward += 20 #not visited
+            reward += 0
     return reward
