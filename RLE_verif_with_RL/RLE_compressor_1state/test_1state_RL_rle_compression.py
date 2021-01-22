@@ -28,7 +28,7 @@ def monitor_signals(dut):
 @cocotb.test()
 def run_test(dut):
     CAP = 1000
-    NUM_EPISODES = 100
+    NUM_EPISODES = 1000
     BATCH_SIZE = 8
     ETA = 1e-4
     global EPS_START
@@ -84,7 +84,7 @@ def run_test(dut):
     curr_state = init_state
 
     suffix = "_N=" + str(N) + ",I=" + str(I) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
-
+    suffix1 = "_1001_1101_"
     tb = TestBench(dut)
     Q_val_list = []
     for i in range(NUM_EPISODES):
@@ -257,8 +257,8 @@ def run_test(dut):
 
     # plot results
     plt.hist(chosen_actions)
-    plt.title("1 state RL - Histogram of consecutive zeros in the activation map\n" + "Reward scheme: 0100")
-    plt.savefig('./hist_of_actions_1001_1101' + suffix + '.png')
+    plt.title("1 state RL - Histogram of consecutive zeros in the activation map\n" + "Reward scheme:"+suffix1)
+    plt.savefig('./hist_of_actions'+suffix1 + suffix + '.png')
     plt.close()
 
     state_list = []
@@ -267,8 +267,8 @@ def run_test(dut):
         state_list.append(x)
 
     plt.hist(state_list)
-    plt.title("1 state RL - Histogram of covered states\n" + "Reward scheme: 0100")
-    plt.savefig('./hist_of_coverage_1001_1101' + suffix + '.png')
+    plt.title("1 state RL - Histogram of covered states\n" + "Reward scheme: "+suffix1)
+    plt.savefig('./hist_of_coverage'+suffix1 + suffix + '.png')
     plt.close()
 
 def get_action(curr_state, net, action_tensor, steps_done):
@@ -297,35 +297,35 @@ def get_reward_based_on_states_visited(coverage):
     reward = 0
     for visited_state in coverage:
         if(visited_state == [0, 0, 0, 0]):
-            reward += 1
+            reward += 0
         if(visited_state == [0, 0, 0, 1]):
-            reward += 1
+            reward += 0
         if(visited_state == [0, 0, 1, 0]):
-            reward += 1
+            reward += 0
         if(visited_state == [0, 0, 1, 1]):
-            reward += 100
+            reward += 50
         if(visited_state == [0, 1, 0, 0]):
-            reward += 100
+            reward += 50
         if(visited_state == [0, 1, 0, 1]):
-            reward += 1
+            reward += 0
         if(visited_state == [0, 1, 1, 0]):
-            reward += 100
+            reward += 50
         if(visited_state == [0, 1, 1, 1]):
-            reward += 100
+            reward += 50
         if(visited_state == [1, 0, 0, 0]):
-            reward += 1
+            reward += 0
         if(visited_state == [1, 0, 0, 1]):
-            reward += 100  #this was 10
+            reward += 20  #this was 10
         if(visited_state == [1, 0, 1, 0]):
-            reward += 100
+            reward += 50
         if(visited_state == [1, 0, 1, 1]):
-            reward += 100
+            reward += 50
         if(visited_state == [1, 1, 0, 0]):
-            reward += 1
+            reward += 0
         if(visited_state == [1, 1, 0, 1]):
-            reward += 100  #this was 10
+            reward += 20  #this was 10
         if(visited_state == [1, 1, 1, 0]):
-            reward += 100
+            reward += 50
         if(visited_state == [1, 1, 1, 1]):
-            reward += 100
+            reward += 50
     return reward
