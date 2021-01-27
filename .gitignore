@@ -1,0 +1,6 @@
+hw_modules/build/*
+tb_without_rl/dump.vcd
+tb_without_rl/results.xml
+tb_without_rl/coverage.dat
+tb_without_rl/sim_build/*
+tb_without_rl/__pycache__/*
