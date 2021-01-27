@@ -141,9 +141,11 @@ package rle_compression;
                     rg_counter <= rg_counter + 1;
             end
             else begin
-                wr_append_zero <= False;
-                rg_counter <= 0;
-                wr_append_count <= rg_counter;
+								if(rg_counter != 0) begin
+		                wr_append_zero <= True;
+				            rg_counter <= 0;
+						        wr_append_count <= rg_counter;
+						    end
                 wr_last_count <= False;
                 wr_input <= val;
             end
