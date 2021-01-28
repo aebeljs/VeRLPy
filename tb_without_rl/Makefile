@@ -32,6 +32,7 @@ TOPLEVEL_LANG ?= verilog
 #COMPILE_ARGS = -LDFLAGS -Wl,--no-as-needed +define+BSV_RESET_FIFO_HEAD +define+BSV_RESET_FIFO_ARRAY
 EXTRA_ARGS += --trace --trace-structs
 PWD=$(shell pwd)
+SIM=verilator
 
 WPWD=$(shell pwd)
 ifeq ($(TOPLEVEL_LANG),verilog)

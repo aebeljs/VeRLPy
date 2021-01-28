@@ -240,7 +240,7 @@ class DUTScoreboard(Scoreboard):
         print(got.value[3])
         if(got.value[2] != exp.value[2]):
             print("Values mismatched")
-            #exit(1)
+            exit(1)
         else:
             print("Values matched")
 
