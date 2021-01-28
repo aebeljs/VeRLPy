@@ -18,7 +18,7 @@ def monitor_signals(dut):
 
 @cocotb.test()
 def run_test(dut):
-    NUM_EPISODES = 1000
+    NUM_EPISODES = 100
     action_list = []
 
     N = 400 # total number of elements in activation map
@@ -38,6 +38,8 @@ def run_test(dut):
     suffix = "_N=" + str(N) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
 
     tb = TestBench(dut)
+    tb.word_width = word_width
+    tb.count_width = count_width
 
     for i in range(NUM_EPISODES):
         print("-----------------------------------------------")
@@ -77,13 +79,15 @@ def run_test(dut):
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
+                output_enable = enable_compression_output(tb,1)
+                for t in output_enable:
+                    yield tb.input_drv.send(t)
+
                 output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 #Enabling output is not considered as new input
         
-
-        end_comp = enable_end_compression(tb,1)
+        end_comp = enable_end_compression(tb)
         for t in end_comp:
             yield tb.input_drv.send(t)
         
@@ -91,7 +95,10 @@ def run_test(dut):
         for t in output_enable:
             yield tb.input_drv.send(t)
 
-        output_enable = enable_compression_output(tb,1)
+        for t in range(2):
+            yield RisingEdge(dut.CLK)
+
+        output_enable = enable_compression_output(tb,0)
         for t in output_enable:
             yield tb.input_drv.send(t)
 
@@ -99,10 +106,21 @@ def run_test(dut):
         for t in output_enable:
             yield tb.input_drv.send(t)
 
-        end_comp = enable_end_compression(tb,0)
+        for t in range(2):
+            yield RisingEdge(dut.CLK)
+
+        output_enable = enable_compression_output(tb,0)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        '''
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+        end_comp = enable_end_compression(tb)
         for t in end_comp:
             yield tb.input_drv.send(t)
-
+        '''
         for n in range(20):
             yield RisingEdge(dut.CLK)
 
@@ -114,7 +132,7 @@ def run_test(dut):
         # set_coverage has the set of states covered
         set_coverage = list(coverage for coverage,_ in itertools.groupby(coverage))
         coverage_list = coverage_list + set_coverage
-
+        print("i = ", i)
         print("last coverage: ", set_coverage)
 
     tb.stop()
