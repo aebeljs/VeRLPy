@@ -4,7 +4,8 @@ package rle_compression;
     // zero count width : 1, 2, 3, 4, 5, 6, 7, 8 (max of only 8-bit counter)    
 
     import Vector::*;
-
+		import DReg::*;
+		
     interface Ifc_rle_compression;
         method Action ma_start_compression(Bit#(4) word_width, Bit#(4) count_Width);
         method Action ma_get_input(Bit#(32) val);
@@ -52,6 +53,8 @@ package rle_compression;
         Wire#(Bool) wr_append_zero <- mkWire();
         Wire#(Bool) wr_last_count <- mkWire();
         Wire#(Bit#(8)) wr_append_count <- mkWire();
+
+				Reg#(Bool) rg_end_compression <- mkReg(False);
 
         rule rl_append_word(wr_input != 0 && rg_word_counter != 16);
             Bit#(5) lv_count = rg_word_counter;
@@ -111,7 +114,17 @@ package rle_compression;
         rule rl_append_next_count(rg_zero_counter == 0 && rg_next_count != 0);
             wr_append_zero <= True;
             wr_append_count <= rg_next_word;
-            wr_last_count <= False;
+            if(rg_end_compression)
+		            wr_last_count <= True;
+		        else
+		        		wr_last_count <= False;
+        endrule
+
+        rule rl_end_compression_append_zero(rg_end_compression == True && rg_counter != 0);
+            wr_append_zero <= True;
+            wr_append_count <= rg_counter;
+            wr_last_count <= True;
+						rg_counter <= 0;
         endrule
 
         method Action ma_start_compression(Bit#(4) word_width, Bit#(4) count_Width) if(rg_zero_counter == 0 && rg_word_counter == 0);
@@ -171,19 +184,17 @@ package rle_compression;
                 rg_zero_counter <= 0;
                 temp_zero = True;
                 lv_output = pack(lv_count);
+								if(rg_next_count == 0)
+										rg_end_compression <= False;
             end
             return tuple2(temp_zero,pack(lv_output));
         endmethod
         method Action ma_end_compression;
             if(rg_zero_counter != 0)
-                if(rg_counter != 0) begin
-                    wr_append_zero <= True;
-                    wr_append_count <= rg_counter;
-                    wr_last_count <= True;
-                    rg_counter <= 0;
-                end
-                else
-                    rg_zero_counter <= 64;
+            		if(rg_counter == 0 && rg_next_count == 0)
+										rg_zero_counter <= 64;
+								else
+										rg_end_compression <= True;
             if(rg_word_counter != 0)
                 rg_word_counter <= 16;
         endmethod
