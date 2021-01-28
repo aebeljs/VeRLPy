@@ -18,7 +18,7 @@ def monitor_signals(dut):
 
 @cocotb.test()
 def run_test(dut):
-    NUM_EPISODES = 100
+    NUM_EPISODES = 1000
     action_list = []
 
     N = 400 # total number of elements in activation map
