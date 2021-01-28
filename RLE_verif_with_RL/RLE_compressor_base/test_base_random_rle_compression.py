@@ -36,6 +36,8 @@ def run_test(dut):
     coverage_list = []
 
     tb = TestBench(dut)
+    tb.word_width = word_width
+    tb.count_width = count_width
 
     suffix = "_N=" + str(N) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
 
@@ -61,24 +63,51 @@ def run_test(dut):
 
         # take action
         # number of non-zero activation map elements at the start
-        for n in range(N):
+        n = 0
+        while(n < N):
             if(dut.RDY_ma_get_input == 1):
                 input_gen = random_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
+                n += 1
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb)
+                output_enable = enable_compression_output(tb,1)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 # Enabling output is not considered as new input
+
+                output_enable = enable_compression_output(tb,0)
+                for t in output_enable:
+                    yield tb.input_drv.send(t)
 
         end_comp = enable_end_compression(tb)
         for t in end_comp:
             yield tb.input_drv.send(t)
 
-        for n in range(10):
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        for t in range(2):
+            yield RisingEdge(dut.CLK)
+
+        output_enable = enable_compression_output(tb,0)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        for t in range(2):
+            yield RisingEdge(dut.CLK)
+
+        output_enable = enable_compression_output(tb,0)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        for n in range(20):
             yield RisingEdge(dut.CLK)
 
         yield RisingEdge(dut.CLK)

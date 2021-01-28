@@ -81,9 +81,12 @@ def run_test(dut):
     suffix = "_N=" + str(N) + ",I=" + str(I) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
 
     suffix1="_1000-1100_"
+    Q_val_list = []
 
     tb = TestBench(dut)
-    Q_val_list = []
+    tb.word_width = word_width
+    tb.count_width = count_width
+
     for i in range(NUM_EPISODES):
         print("-----------------------------------------------")
         print("Epsiode number: ", i)
@@ -110,53 +113,75 @@ def run_test(dut):
 
         # take action
         # number of non-zero activation map elements at the start
-        for n in range(I):
+        n = 0
+        while(n < I):
             if(dut.RDY_ma_get_input == 1):
                 input_gen = random_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
+                n += 1
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
+                output_enable = enable_compression_output(tb,1)
+                for t in output_enable:
+                    yield tb.input_drv.send(t)
+
                 output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 # Enabling output is not considered as new input
 
         # RL generated number of consecutive 0s
-        for n in range(Z):
+        n = 0
+        while(n < Z):
             # generate consecutive 0s
             if(dut.RDY_ma_get_input == 1):
                 input_gen = zero_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
+                n += 1
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
+                output_enable = enable_compression_output(tb,1)
+                for t in output_enable:
+                    yield tb.input_drv.send(t)
+
                 output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 # Enabling output is not considered as new input
 
         # remaining non-zero elements in the activation map
-        for n in range(N - Z - I):
+        n = 0
+        while(n < (N - Z - I)):
             if(dut.RDY_ma_get_input == 1):
                 input_gen = random_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
+                n += 1
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
+                output_enable = enable_compression_output(tb,1)
+                for t in output_enable:
+                    yield tb.input_drv.send(t)
+
                 output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 # Enabling output is not considered as new input
 
-        end_comp = enable_end_compression(tb,1)
+        end_comp = enable_end_compression(tb)
         for t in end_comp:
             yield tb.input_drv.send(t)
-        
+
         output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        for t in range(2):
+            yield RisingEdge(dut.CLK)
+
+        output_enable = enable_compression_output(tb,0)
         for t in output_enable:
             yield tb.input_drv.send(t)
 
@@ -164,12 +189,11 @@ def run_test(dut):
         for t in output_enable:
             yield tb.input_drv.send(t)
 
-        output_enable = enable_compression_output(tb,1)
-        for t in output_enable:
-            yield tb.input_drv.send(t)
+        for t in range(2):
+            yield RisingEdge(dut.CLK)
 
-        end_comp = enable_end_compression(tb,0)
-        for t in end_comp:
+        output_enable = enable_compression_output(tb,0)
+        for t in output_enable:
             yield tb.input_drv.send(t)
 
         for n in range(20):
@@ -324,7 +348,7 @@ def get_reward_based_on_states_visited(coverage):
             reward += 20#200
         elif(visited_state == '1100-1100'):#
             reward += 20#200
-        
+
         #visited with freq=100
         elif(visited_state == '1000-1100'):
             reward += 20 #100

@@ -79,9 +79,13 @@ def run_test(dut):
     curr_state = init_state
 
     suffix = "_N=" + str(N) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
-    suffix1 = "_0_and_rarely_visted_"
-    tb = TestBench(dut)
+    suffix1 = "_0010"
     Q_val_list = []
+
+    tb = TestBench(dut)
+    tb.word_width = word_width
+    tb.count_width = count_width
+
     for i in range(NUM_EPISODES):
         print("-----------------------------------------------")
         print("Epsiode number: ", i)
@@ -107,7 +111,8 @@ def run_test(dut):
         chosen_actions.append(Z.item())
 
         # take action
-        for n in range(N):
+        n = 0
+        while(n < N):
             # generate consecutive 0s
             if(dut.RDY_ma_get_input == 1):
                 sample = random.random()
@@ -117,19 +122,30 @@ def run_test(dut):
                     input_gen = random_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
+                n += 1
                 yield RisingEdge(dut.CLK)
-                # fsm_states_visited.append(cocotb.fork(monitor_signals(dut)))
+
             elif(dut.RDY_mav_send_compressed_value == 1):
+                output_enable = enable_compression_output(tb,1)
+                for t in output_enable:
+                    yield tb.input_drv.send(t)
+
                 output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-                n = n-1 ##Enabling output is not considered as new input
 
-        end_comp = enable_end_compression(tb,1)
+        end_comp = enable_end_compression(tb)
         for t in end_comp:
             yield tb.input_drv.send(t)
-        
+
         output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        for t in range(2):
+            yield RisingEdge(dut.CLK)
+
+        output_enable = enable_compression_output(tb,0)
         for t in output_enable:
             yield tb.input_drv.send(t)
 
@@ -137,19 +153,17 @@ def run_test(dut):
         for t in output_enable:
             yield tb.input_drv.send(t)
 
-        output_enable = enable_compression_output(tb,1)
-        for t in output_enable:
-            yield tb.input_drv.send(t)
+        for t in range(2):
+            yield RisingEdge(dut.CLK)
 
-        end_comp = enable_end_compression(tb,0)
-        for t in end_comp:
+        output_enable = enable_compression_output(tb,0)
+        for t in output_enable:
             yield tb.input_drv.send(t)
 
         for n in range(20):
             yield RisingEdge(dut.CLK)
 
         yield RisingEdge(dut.CLK)
-
 
         # calculate the reward
         coverage.sort()
@@ -274,31 +288,31 @@ def get_reward_based_on_states_visited(coverage):
     reward = 0
     for visited_state in coverage:
         if(visited_state == [0, 0, 0, 0]):
-            reward += 0 #1000 freq
+            reward += 0
         if(visited_state == [0, 0, 0, 1]):
             reward += 0
         if(visited_state == [0, 0, 1, 0]):
-            reward += 20 #50 freq
+            reward += 10
         if(visited_state == [0, 0, 1, 1]):
-            reward += 20 #branch
+            reward += 0
         if(visited_state == [0, 1, 0, 0]):
-            reward += 0 #1000 freq
+            reward += 0
         if(visited_state == [0, 1, 0, 1]):
             reward += 0
         if(visited_state == [0, 1, 1, 0]):
-            reward += 20 #branch
+            reward += 0
         if(visited_state == [0, 1, 1, 1]):
-            reward += 0 
+            reward += 0
         if(visited_state == [1, 0, 0, 0]):
-            reward += 0 #1000 freq
+            reward += 0
         if(visited_state == [1, 0, 0, 1]):
             reward += 0
         if(visited_state == [1, 0, 1, 0]):
-            reward += 20 #branch
+            reward += 0
         if(visited_state == [1, 0, 1, 1]):
             reward += 0
         if(visited_state == [1, 1, 0, 0]):
-            reward += 0 #350 freq
+            reward += 0
         if(visited_state == [1, 1, 0, 1]):
             reward += 0
         if(visited_state == [1, 1, 1, 0]):

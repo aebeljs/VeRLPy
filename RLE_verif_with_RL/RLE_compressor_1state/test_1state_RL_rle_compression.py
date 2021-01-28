@@ -73,7 +73,7 @@ def run_test(dut):
     count_width = 6
 
     #word_width = 4 #Can be randomised to pick only from the set 1, 2, 4, 8
-    
+
     #count_width = 6 # count_width = random.randint(1,8)
 
     cocotb.fork(clock_gen(dut.CLK))
@@ -85,8 +85,12 @@ def run_test(dut):
 
     suffix = "_N=" + str(N) + ",I=" + str(I) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
     suffix1 = "_0010_"
-    tb = TestBench(dut)
     Q_val_list = []
+
+    tb = TestBench(dut)
+    tb.word_width = word_width
+    tb.count_width = count_width
+
     for i in range(NUM_EPISODES):
         print("-----------------------------------------------")
         print("Epsiode number: ", i)
@@ -100,8 +104,7 @@ def run_test(dut):
         #count_width = random.randint(1,8)
 
         coverage.clear()
-        tb.word_width = word_width
-        tb.count_width = count_width
+
         start_comp = start_compression(tb,word_width,count_width)
         for t in start_comp:
             yield tb.input_drv.send(t)
@@ -127,6 +130,10 @@ def run_test(dut):
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
+                output_enable = enable_compression_output(tb,1)
+                for t in output_enable:
+                    yield tb.input_drv.send(t)
+
                 output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
@@ -143,6 +150,10 @@ def run_test(dut):
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
+                output_enable = enable_compression_output(tb,1)
+                for t in output_enable:
+                    yield tb.input_drv.send(t)
+
                 output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
@@ -158,15 +169,26 @@ def run_test(dut):
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
+                output_enable = enable_compression_output(tb,1)
+                for t in output_enable:
+                    yield tb.input_drv.send(t)
+
                 output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
 
-        end_comp = enable_end_compression(tb,1)
+        end_comp = enable_end_compression(tb)
         for t in end_comp:
             yield tb.input_drv.send(t)
-        
+
         output_enable = enable_compression_output(tb,1)
+        for t in output_enable:
+            yield tb.input_drv.send(t)
+
+        for t in range(2):
+            yield RisingEdge(dut.CLK)
+
+        output_enable = enable_compression_output(tb,0)
         for t in output_enable:
             yield tb.input_drv.send(t)
 
@@ -174,12 +196,11 @@ def run_test(dut):
         for t in output_enable:
             yield tb.input_drv.send(t)
 
-        output_enable = enable_compression_output(tb,1)
-        for t in output_enable:
-            yield tb.input_drv.send(t)
+        for t in range(2):
+            yield RisingEdge(dut.CLK)
 
-        end_comp = enable_end_compression(tb,0)
-        for t in end_comp:
+        output_enable = enable_compression_output(tb,0)
+        for t in output_enable:
             yield tb.input_drv.send(t)
 
         for n in range(20):

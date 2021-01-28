@@ -86,11 +86,11 @@ def run_test(dut):
                 output_enable = enable_compression_output(tb,0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
-        
+
         end_comp = enable_end_compression(tb)
         for t in end_comp:
             yield tb.input_drv.send(t)
-        
+
         output_enable = enable_compression_output(tb,1)
         for t in output_enable:
             yield tb.input_drv.send(t)
@@ -113,19 +113,10 @@ def run_test(dut):
         for t in output_enable:
             yield tb.input_drv.send(t)
 
-        '''
-        output_enable = enable_compression_output(tb,1)
-        for t in output_enable:
-            yield tb.input_drv.send(t)
-        end_comp = enable_end_compression(tb)
-        for t in end_comp:
-            yield tb.input_drv.send(t)
-        '''
         for n in range(20):
             yield RisingEdge(dut.CLK)
 
         yield RisingEdge(dut.CLK)
-
 
         # calculate the reward
         coverage.sort()
