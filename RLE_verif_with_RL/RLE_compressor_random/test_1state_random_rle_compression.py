@@ -20,7 +20,7 @@ def run_test(dut):
     NUM_EPISODES = 1000
     action_list = []
 
-    N = 800 # total number of elements in activation map
+    N = 400 # total number of elements in activation map
     I = 5 # change this later
 
     for i in range(N - I):
