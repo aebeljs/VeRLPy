@@ -55,8 +55,8 @@ def run_test(dut):
     optimizer = optim.SGD(policy_net.parameters(), lr=ETA) # no weight_decay as we want it to overfit in this case
     criterion = nn.MSELoss()
 
-    N = 400 # total number of elements in activation map
-    I = 100
+    N = 800 # total number of elements in activation map
+    I = 5
     for i in range(0, N - I):
         action_list.append(i)
     action_tensor = torch.FloatTensor(action_list).reshape((len(action_list), 1))
@@ -84,7 +84,7 @@ def run_test(dut):
     curr_state = init_state
 
     suffix = "_N=" + str(N) + ",I=" + str(I) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
-    suffix1 = "_0010_"
+    suffix1 = "_0001_0101_"
     Q_val_list = []
 
     tb = TestBench(dut)
@@ -320,17 +320,17 @@ def get_reward_based_on_states_visited(coverage):
         if(visited_state == [0, 0, 0, 0]):
             reward += 0#
         if(visited_state == [0, 0, 0, 1]):
-            reward += 0
-        if(visited_state == [0, 0, 1, 0]):
-            reward += 10
-        if(visited_state == [0, 0, 1, 1]):
             reward += 20
+        if(visited_state == [0, 0, 1, 0]):
+            reward += 0
+        if(visited_state == [0, 0, 1, 1]):
+            reward += 0
         if(visited_state == [0, 1, 0, 0]):
             reward += 0#
         if(visited_state == [0, 1, 0, 1]):
-            reward += 0
-        if(visited_state == [0, 1, 1, 0]):
             reward += 20
+        if(visited_state == [0, 1, 1, 0]):
+            reward += 0
         if(visited_state == [0, 1, 1, 1]):
             reward += 0
         if(visited_state == [1, 0, 0, 0]):
@@ -338,7 +338,7 @@ def get_reward_based_on_states_visited(coverage):
         if(visited_state == [1, 0, 0, 1]):
             reward += 0
         if(visited_state == [1, 0, 1, 0]):
-            reward += 20
+            reward += 0
         if(visited_state == [1, 0, 1, 1]):
             reward += 0
         if(visited_state == [1, 1, 0, 0]):

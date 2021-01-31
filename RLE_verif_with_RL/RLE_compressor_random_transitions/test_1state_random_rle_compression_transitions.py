@@ -181,10 +181,11 @@ def run_test(dut):
     # plot results
     plt.hist(chosen_actions)
     plt.title("Random choice - Histogram of consecutive zeros in the activation map")
-    plt.savefig('./hist_of_actions' + suffix + '.png')
+    plt.savefig('./hist_of_actions2_' + suffix + '.png')
     plt.close()
 
     # plt.hist(coverage_list)
+    coverage_list.sort()
     from collections import Counter
     labels = Counter(coverage_list).keys() # equals to list(set(words))
     counts = Counter(coverage_list).values() # counts the elements' frequency
@@ -193,5 +194,8 @@ def run_test(dut):
     plt.title("Random choice - Histogram of covered state transitions")
     plt.xticks(rotation = 90)
     plt.tight_layout()
-    plt.savefig('./hist_of_coverage' + suffix + '.png')
+    plt.savefig('./hist_of_coverage2_' + suffix + '.png')
     plt.close()
+
+    print("Histogram of coverage values=\n")
+    print(labels); print(counts);

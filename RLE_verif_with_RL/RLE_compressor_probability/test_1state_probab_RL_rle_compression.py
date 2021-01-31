@@ -236,7 +236,7 @@ def run_test(dut):
     plt.hist(chosen_actions)
     plt.tight_layout()
     plt.title("Stochastic input using RL- Histogram of Pr(0) in the activation map\n" + "Reward scheme:"+suffix1)
-    plt.savefig('./new_hist_of_actions'+suffix1 + suffix + '.png')
+    plt.savefig('./new_hist_of_actions3'+suffix1 + suffix + '.png')
     plt.close()
 
     state_list = []
@@ -254,8 +254,11 @@ def run_test(dut):
     plt.tight_layout()
     # plt.hist(state_list)
     plt.title("Stochastic input using RL - Histogram of covered states\n" + "Reward scheme:"+suffix1)
-    plt.savefig('./new_hist_of_coverage'+suffix1 + suffix + '.png')
+    plt.savefig('./new_hist_of_coverage3'+suffix1 + suffix + '.png')
     plt.close()
+
+    print("\nHistogram of coverage values=")
+    print(labels); print(counts);
 
 def get_action(curr_state, net, action_tensor, steps_done):
     """
@@ -292,15 +295,15 @@ def get_reward_based_on_states_visited(coverage):
         if(visited_state == [0, 0, 0, 1]):
             reward += 0
         if(visited_state == [0, 0, 1, 0]):
-            reward += 10
+            reward += 20
         if(visited_state == [0, 0, 1, 1]):
-            reward += 0
+            reward += 30
         if(visited_state == [0, 1, 0, 0]):
             reward += 0
         if(visited_state == [0, 1, 0, 1]):
             reward += 0
         if(visited_state == [0, 1, 1, 0]):
-            reward += 0
+            reward += 30
         if(visited_state == [0, 1, 1, 1]):
             reward += 0
         if(visited_state == [1, 0, 0, 0]):
@@ -308,7 +311,7 @@ def get_reward_based_on_states_visited(coverage):
         if(visited_state == [1, 0, 0, 1]):
             reward += 0
         if(visited_state == [1, 0, 1, 0]):
-            reward += 0
+            reward += 30
         if(visited_state == [1, 0, 1, 1]):
             reward += 0
         if(visited_state == [1, 1, 0, 0]):

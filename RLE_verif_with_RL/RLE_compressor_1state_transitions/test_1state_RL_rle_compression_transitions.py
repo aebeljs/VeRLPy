@@ -55,8 +55,8 @@ def run_test(dut):
     optimizer = optim.SGD(policy_net.parameters(), lr=ETA) # no weight_decay as we want it to overfit in this case
     criterion = nn.MSELoss()
 
-    N = 400 # total number of elements in activation map
-    I = 100
+    N = 800 # total number of elements in activation map
+    I = 5
     for i in range(0, N - I):
         action_list.append(i)
     action_tensor = torch.FloatTensor(action_list).reshape((len(action_list), 1))
@@ -80,7 +80,7 @@ def run_test(dut):
 
     suffix = "_N=" + str(N) + ",I=" + str(I) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
 
-    suffix1="_1000-1100_"
+    suffix1="_0000-0100_"
     Q_val_list = []
 
     tb = TestBench(dut)
@@ -296,6 +296,10 @@ def run_test(dut):
     plt.savefig('./hist_of_coverage_'+suffix1 + suffix + '.png')
     plt.close()
 
+    print("\nHistogram of coverage values=")
+    print(labels); print(counts);print("\n");
+
+
 def get_action(curr_state, net, action_tensor, steps_done):
     """
     returns the number of consecutive zeros as per current policy
@@ -323,35 +327,39 @@ def get_reward_based_on_states_visited(coverage):
     for visited_state in coverage:
         #visited with freq=50
         if(visited_state == '0010-0100'):
+            reward += 0
+        elif(visited_state == '0000-0100'):
+            reward += 0
+        elif(visited_state == '0000-0101'):
             reward += 20
         elif(visited_state == '0010-1000'):
-            reward += 20
+            reward += 0
         elif(visited_state == '0010-1100'):
-            reward += 20
+            reward += 0
         elif(visited_state == '0100-0010'):
-            reward += 20
+            reward += 0
         #visited with freq~200
         elif(visited_state == '0100-1000'):
-            reward += 20#200
+            reward += 0#200
         elif(visited_state == '0100-1100'):#
-            reward += 20#200
+            reward += 0#200
         elif(visited_state == '1000-0010'):
-            reward += 20 #200
+            reward += 0 #200
         elif(visited_state == '1000-0100'):
-            reward += 20
+            reward += 0
         elif(visited_state == '1100-0000'):
-            reward += 20
+            reward += 0
         elif(visited_state == '1100-0010'):
-            reward += 20
+            reward += 0
         #visited with freq~200
         elif(visited_state == '1100-1000'):
-            reward += 20#200
+            reward += 0#200
         elif(visited_state == '1100-1100'):#
-            reward += 20#200
+            reward += 0#200
 
         #visited with freq=100
         elif(visited_state == '1000-1100'):
-            reward += 20 #100
+            reward += 0 #100
 
         else:
             reward += 0

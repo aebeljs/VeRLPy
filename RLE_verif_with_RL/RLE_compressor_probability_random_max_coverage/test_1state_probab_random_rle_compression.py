@@ -2,6 +2,7 @@ import cocotb
 from test_rle_compression_cocotb import *
 import itertools
 import matplotlib.pyplot as plt
+import sys
 
 coverage = []
 
@@ -20,11 +21,7 @@ def run_test(dut):
     NUM_EPISODES = 1000
     action_list = []
 
-    N = 800 # total number of elements in activation map
-    I = 5 # change this later
-
-    for i in range(N - I):
-        action_list.append(i)
+    N = 400 # total number of elements in activation map
 
     global word_width
     global count_width
@@ -38,25 +35,20 @@ def run_test(dut):
     chosen_actions = []
     coverage_list = []
 
-    suffix = "_N=" + str(N) + ",I=" + str(I) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
+    suffix = "_N=" + str(N) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
 
     tb = TestBench(dut)
     tb.word_width = word_width
     tb.count_width = count_width
 
-    for i in range(NUM_EPISODES):
+    for i in range(NUM_EPISODES+1):
+        print("-----------------------------------------------")
         print("Epsiode number: ", i)
 
-        # take step
-        # action_taken, next_state, reward = take_step_in_env(curr_state, dut)
-        # wrap this one episode inside the training loop
-
+        # reset the DUT
         dut.RST_N <= 0
         yield Timer(2)
         dut.RST_N <= 1
-
-        # print("coverage len", len(coverage))
-        #coverage.clear()
 
         coverage.clear()
 
@@ -66,60 +58,24 @@ def run_test(dut):
         yield RisingEdge(dut.CLK)
         yield RisingEdge(dut.CLK)
 
-        # generate action for agent based on curr_state
-        Z =  random.choice(action_list)
-
-        chosen_actions.append(Z)
+        # get action
+        Z = i / 1000.0
         print("action: ", Z)
 
+        chosen_actions.append(Z)
+
         # take action
-        # number of non-zero activation map elements at the start
         n = 0
-        while(n < I):
+        while(n < N):
             if(dut.RDY_ma_get_input == 1):
-                input_gen = random_input_gen(tb)
+                sample = random.random()
+                if(sample < Z):
+                    input_gen = zero_input_gen(tb)
+                else:
+                    input_gen = random_input_gen(tb)
                 for t in input_gen:
                     yield tb.input_drv.send(t)
                 n=n+1
-                yield RisingEdge(dut.CLK)
-
-            elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb,1)
-                for t in output_enable:
-                    yield tb.input_drv.send(t)
-
-                output_enable = enable_compression_output(tb,0)
-                for t in output_enable:
-                    yield tb.input_drv.send(t)
-
-        # RL generated number of consecutive 0s
-        n=0
-        while(n < Z):
-            # generate consecutive 0s
-            if(dut.RDY_ma_get_input == 1):
-                input_gen = zero_input_gen(tb)
-                for t in input_gen:
-                    yield tb.input_drv.send(t)
-                n=n+1
-                yield RisingEdge(dut.CLK)
-
-            elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb,1)
-                for t in output_enable:
-                    yield tb.input_drv.send(t)
-
-                output_enable = enable_compression_output(tb,0)
-                for t in output_enable:
-                    yield tb.input_drv.send(t)
-
-        # remaining non-zero elements in the activation map
-        n=0
-        while( n < N - Z - I):
-            if(dut.RDY_ma_get_input == 1):
-                input_gen = random_input_gen(tb)
-                for t in input_gen:
-                    yield tb.input_drv.send(t)
-                n = n + 1
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
@@ -164,15 +120,19 @@ def run_test(dut):
 
         # calculate the reward
         coverage.sort()
+        # set_coverage has the set of states covered
         set_coverage = list(coverage for coverage,_ in itertools.groupby(coverage))
-        print("last coverage: ", set_coverage)
         coverage_list = coverage_list + set_coverage
+        print("i = ", i)
+        print("last coverage: ", set_coverage)
 
     tb.stop()
+
     # plot results
     plt.hist(chosen_actions)
-    plt.title("Random choice - Histogram of consecutive zeros in the activation map")
-    plt.savefig('./hist_of_actions' + suffix + '.png')
+    plt.title("Stochastic input - Histogram of probability of zero in the activation map\n")
+    plt.tight_layout()
+    plt.savefig('./new_hist_of_actions' + suffix + '.png')
     plt.close()
 
     state_list = []
@@ -180,7 +140,15 @@ def run_test(dut):
         x = ''.join(map(str, cov))
         state_list.append(x)
 
-    plt.hist(state_list)
-    plt.title("Random choice - Histogram of covered states")
-    plt.savefig('./hist_of_coverage' + suffix + '.png')
+    state_list.sort()
+    from collections import Counter
+    labels = Counter(state_list).keys() # equals to list(set(words))
+    counts = Counter(state_list).values() # counts the elements' frequency
+    plt.vlines(labels, 0, counts, color='C0', lw=4)
+    plt.grid()
+    plt.xticks(rotation = 90)
+    plt.tight_layout()
+    # plt.hist(state_list)
+    plt.title("Stochastic input - Histogram of covered states\n")
+    plt.savefig('./new_hist_of_coverage' + suffix + '.png')
     plt.close()

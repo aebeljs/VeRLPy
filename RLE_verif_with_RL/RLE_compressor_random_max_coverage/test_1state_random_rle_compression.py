@@ -44,8 +44,8 @@ def run_test(dut):
     tb.word_width = word_width
     tb.count_width = count_width
 
-    for i in range(NUM_EPISODES):
-        print("Epsiode number: ", i)
+    for i in range(0,len(action_list)):
+        print("Episode : ", i+1)
 
         # take step
         # action_taken, next_state, reward = take_step_in_env(curr_state, dut)
@@ -67,7 +67,7 @@ def run_test(dut):
         yield RisingEdge(dut.CLK)
 
         # generate action for agent based on curr_state
-        Z =  random.choice(action_list)
+        Z =  i
 
         chosen_actions.append(Z)
         print("action: ", Z)
@@ -171,7 +171,7 @@ def run_test(dut):
     tb.stop()
     # plot results
     plt.hist(chosen_actions)
-    plt.title("Random choice - Histogram of consecutive zeros in the activation map")
+    plt.title("All choices - Histogram of consecutive zeros in the activation map")
     plt.savefig('./hist_of_actions' + suffix + '.png')
     plt.close()
 
@@ -181,6 +181,6 @@ def run_test(dut):
         state_list.append(x)
 
     plt.hist(state_list)
-    plt.title("Random choice - Histogram of covered states")
+    plt.title("All choices - Histogram of covered states")
     plt.savefig('./hist_of_coverage' + suffix + '.png')
     plt.close()
