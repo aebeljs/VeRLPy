@@ -36,10 +36,10 @@ SIM=verilator
 
 WPWD=$(shell pwd)
 ifeq ($(TOPLEVEL_LANG),verilog)
-    VERILOG_SOURCES = $(WPWD)/../hw_modules/verilog/*.v
+    VERILOG_SOURCES = $(WPWD)/../../hw_modules/verilog/*.v
 endif
 
 TOPLEVEL := mkrle_decompression
-MODULE   := test_rle_decompression
+MODULE   := test_base_random_rle_decompression
 
 include $(shell cocotb-config --makefiles)/Makefile.sim
