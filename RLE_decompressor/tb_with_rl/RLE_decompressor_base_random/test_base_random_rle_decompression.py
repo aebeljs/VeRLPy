@@ -6,6 +6,7 @@ import sys
 from collections import defaultdict
 
 coverage = []
+total_coverage = []
 count_width = 4
 word_width = 4
 random.seed(1)
@@ -22,6 +23,7 @@ def monitor_signals(dut):
             (int)(dut.rg_counter.value == 2**count_width - 2),
             (int)(dut.rg_next_count.value != 0),
             (int)(dut.rg_is_next_word.value == True)]
+        s = ''.join(map(str, s))
         coverage.append(s)
         ## ** difficult to cover
         ##rg_count_valid == False
@@ -51,6 +53,7 @@ def run_test(dut):
         count_width = random.randint(2,8)
         #count_width = 6
 
+        coverage.clear()
         dut.RST_N <= 0
         yield Timer(2)
         dut.RST_N <= 1
@@ -59,7 +62,7 @@ def run_test(dut):
             yield RisingEdge(dut.CLK)
 
         ##Initial compressed input alone will have details of word width and count width
-        compressed_input = random.randint(0,2**56 - 1) << 8 | count_width << 4 | word_width
+        compressed_input = random.randint(0,2**56) << 8 | count_width << 4 | word_width
         for n2 in range(M):
             if(dut.RDY_ma_get_inputs != 1):
                 yield RisingEdge(dut.RDY_ma_get_inputs)
@@ -79,18 +82,15 @@ def run_test(dut):
         for delay in range(10):
             yield RisingEdge(dut.CLK)
 
+        total_coverage.extend(coverage)
+
     tb.stop()
     yield RisingEdge(dut.CLK)
 
-    state_list = []
-    for cov in coverage:
-        x = ''.join(map(str, cov))
-        state_list.append(x)
-
-    state_list.sort()
+    total_coverage.sort()
     from collections import Counter
-    labels = Counter(state_list).keys() # equals to list(set(words))
-    counts = Counter(state_list).values() # counts the elements' frequency
+    labels = Counter(total_coverage).keys() # equals to list(set(words))
+    counts = Counter(total_coverage).values() # counts the elements' frequency
     plt.vlines(labels, 0, counts, color='C0', lw=4)
     plt.grid()
     plt.xticks(rotation = 90)

@@ -25,7 +25,7 @@ def monitor_signals(dut):
 
 @cocotb.test()
 def run_test(dut):
-    NUM_EPISODES = 10000
+    NUM_EPISODES = 1000
     global DEBUG_LOG
     DEBUG_LOG = False
     action_list = []
@@ -76,8 +76,8 @@ def run_test(dut):
         yield RisingEdge(dut.CLK)
 
         # get action
-        # Z = (int)(random.random() * 100) / 100.
-        Z = (int)(random.random() * 1000) / 1000.
+        Z = (int)(random.random() * 100) / 100.
+        # Z = (int)(random.random() * 1000) / 1000.
         print("action: ", Z)
 
         chosen_actions.append(Z)
