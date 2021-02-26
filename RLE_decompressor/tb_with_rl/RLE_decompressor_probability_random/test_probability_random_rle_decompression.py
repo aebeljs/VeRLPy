@@ -7,6 +7,7 @@ from collections import defaultdict
 
 coverage = []
 total_coverage = []
+total_set_coverage = []
 count_width = 6
 word_width = 4
 random.seed(1)
@@ -163,16 +164,17 @@ def run_test(dut):
             input_list.append(compressed_word_vec)
         # print(input_list)
         input_list.insert(0, input_list.pop(first_compressed_zero_idx))
+        print(input_list)
 
         ##Initial compressed input alone will have details of word width and count width
-        compressed_input = input_list[0]
-        for n2 in range(1, len(input_list)):
+        # input_list = [13908259987590759268, 5466339630142750055, 7708008654023722417, 13711433221677006084, 4791302593951332211, 297309096011432976, 12804395393502841569, 17160679680036653830, 3696519104342578997, 2325550866100392001, 17597997525760624910, 5843402158363911501, 17183764384036183007, 4829002859638981380, 8450570782378548667, 557071639388608969, 297522366668538896, 11045939112885484732, 13137551342047707595, 15582317614200405168, 3477069253226807425, 5742721319435764721, 4284827710540203280, 2603391325574209430, 145294693537693956, 11380606908143380531, 17972173053635191860, 581036954334987297, 9376578776570838914, 2255091308962467159, 6672892889147781230, 1207250718181834817, 3287439725080637815, 18268255891619857001, 1915831582312376255, 1161638398935816]
+        # input_list = [9368631043577398116, 2216776977775572170, 14301683823907461990, 15121658413985603301, 11948213363879247217, 581257939524850704, 2183256803474030594, 9779846399426106866, 268734901004314769, 2360453622603452609, 17384146028894171654, 5107697065764309873, 7179854534921886875, 4684889037429817604, 16462430396108157943, 12153119009882216616, 293099065720318992, 18093367915201532687, 15838585278011049037, 10053140081791194139, 4629986359788179714, 17202326133095786986, 7074750978420750278, 11019334811863768481, 4687191977688581892, 4164206021795012246, 2249524958253636221, 585614273313575968, 14403408446759471993, 2756744041155459975, 9012741384553755700, 1171516520468320450, 16532561956772814059, 147720, 2699922016]
+        for compressed_input in input_list:
             if(dut.RDY_ma_get_inputs != 1):
                 yield RisingEdge(dut.RDY_ma_get_inputs)
             yield tb.input_drv.send(InputTransaction(tb,1,compressed_input))
             yield tb.input_drv.send(InputTransaction(tb,0,0))
-            ##Input Randomisation
-            compressed_input = input_list[n2]
+            # compressed_input = input_list[n2]
             yield RisingEdge(dut.CLK)
             yield RisingEdge(dut.CLK)
 
@@ -187,6 +189,9 @@ def run_test(dut):
 
         # process coverage of this episode here
         total_coverage.extend(coverage)
+        set_coverage = list(set(coverage))
+        print('set coverage:', set_coverage)
+        total_set_coverage.extend(set_coverage)
 
     tb.stop()
     yield RisingEdge(dut.CLK)
@@ -195,20 +200,28 @@ def run_test(dut):
     from collections import Counter
     labels = list(Counter(total_coverage).keys()) # equals to list(set(words))
     counts = list(Counter(total_coverage).values()) # counts the elements' frequency
-    print(labels)
-    print(counts)
-    # remove 00000001 for plotting
-    for p in range(len(labels)):
-        if labels[p] == '00000001':
-            labels.pop(p)
-            counts.pop(p)
-            break
+    print('Coverage histogram')
+    for c in range(len(labels)):
+        print(labels[c], counts[c])
+
     plt.vlines(labels, 0, counts, color='C0', lw=4)
     plt.grid()
     plt.xticks(rotation = 90)
     plt.tight_layout()
-    # plt.hist(state_list)
     plt.title("Histogram of covered states\n")
-    # plt.savefig('./hist_of_coverage' + suffix + '.png', bbox_inches='tight')
     plt.savefig('./hist_of_coverage' + suffix + '.png', bbox_inches='tight')
+    plt.close()
+
+    total_set_coverage.sort()
+    labels = list(Counter(total_set_coverage).keys()) # equals to list(set(words))
+    counts = list(Counter(total_set_coverage).values()) # counts the elements' frequency
+    print('Set coverage histogram')
+    for c in range(len(labels)):
+        print(labels[c], counts[c])
+    plt.vlines(labels, 0, counts, color='C0', lw=4)
+    plt.grid()
+    plt.xticks(rotation = 90)
+    plt.tight_layout()
+    plt.title("Histogram of set of covered states\n")
+    plt.savefig('./hist_of_set_coverage' + suffix + '.png', bbox_inches='tight')
     plt.close()

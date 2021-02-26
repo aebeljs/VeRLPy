@@ -16,6 +16,7 @@ print(device)
 
 coverage = []
 total_coverage = []
+total_set_coverage = []
 count_width = 6
 word_width = 4
 random.seed(1)
@@ -108,7 +109,7 @@ def run_test(dut):
     N = 400
 
     suffix = "_N=" + str(N) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
-    suffix1 = "_0010"
+    suffix1 = "_00000010"
     Q_val_list = []
 
     # suffix = "_m=" + str(M) + ",numEps=" + str(NUM_EPISODES)
@@ -211,13 +212,13 @@ def run_test(dut):
 
         ##Initial compressed input alone will have details of word width and count width
         compressed_input = input_list[0]
-        for n2 in range(1, len(input_list)):
+        for compressed_input in input_list:
             if(dut.RDY_ma_get_inputs != 1):
                 yield RisingEdge(dut.RDY_ma_get_inputs)
             yield tb.input_drv.send(InputTransaction(tb,1,compressed_input))
             yield tb.input_drv.send(InputTransaction(tb,0,0))
             ##Input Randomisation
-            compressed_input = input_list[n2]
+            # compressed_input = input_list[n2]
             yield RisingEdge(dut.CLK)
             yield RisingEdge(dut.CLK)
 
@@ -236,6 +237,7 @@ def run_test(dut):
         set_coverage = list(dict.fromkeys(coverage))
 
         print("last coverage: ", set_coverage)
+        total_set_coverage.extend(set_coverage)
 
         reward = get_reward_based_on_states_visited(set_coverage)
         print("reward: ", reward)
@@ -309,23 +311,37 @@ def run_test(dut):
     from collections import Counter
     labels = list(Counter(total_coverage).keys()) # equals to list(set(words))
     counts = list(Counter(total_coverage).values()) # counts the elements' frequency
-
-    # remove 00000001 for plotting
-    for p in range(len(labels)):
-        if labels[p] == '00000001':
-            labels.pop(p)
-            counts.pop(p)
-            break
-
+    print('Coverage histogram')
+    for c in range(len(labels)):
+        print(labels[c], counts[c])
+    # # remove 00000001 for plotting
+    # for p in range(len(labels)):
+    #     if labels[p] == '00000001':
+    #         labels.pop(p)
+    #         counts.pop(p)
+    #         break
     plt.vlines(labels, 0, counts, color='C0', lw=4)
     plt.grid()
     plt.xticks(rotation = 90)
     plt.tight_layout()
-    # plt.hist(state_list)
     plt.title("Histogram of covered states\n")
-    # plt.savefig('./hist_of_coverage' + suffix + '.png', bbox_inches='tight')
-    plt.savefig('./hist_of_coverage' + suffix + '.png', bbox_inches='tight')
+    plt.savefig('./hist_of_coverage' +suffix1+ suffix + '.png', bbox_inches='tight')
     plt.close()
+
+    total_set_coverage.sort()
+    labels = list(Counter(total_set_coverage).keys()) # equals to list(set(words))
+    counts = list(Counter(total_set_coverage).values()) # counts the elements' frequency
+    print('Set coverage histogram')
+    for c in range(len(labels)):
+        print(labels[c], counts[c])
+    plt.vlines(labels, 0, counts, color='C0', lw=4)
+    plt.grid()
+    plt.xticks(rotation = 90)
+    plt.tight_layout()
+    plt.title("Histogram of set of covered states\n")
+    plt.savefig('./hist_of_set_coverage' +suffix1+ suffix + '.png', bbox_inches='tight')
+    plt.close()
+
 
 def get_action(curr_state, net, action_tensor, steps_done):
     """
@@ -357,6 +373,6 @@ def get_action(curr_state, net, action_tensor, steps_done):
 def get_reward_based_on_states_visited(coverage):
     reward = 0
     for visited_state in coverage:
-        if(visited_state == '00000100'):
+        if(visited_state == '00000010'):
             reward += 10
     return reward
