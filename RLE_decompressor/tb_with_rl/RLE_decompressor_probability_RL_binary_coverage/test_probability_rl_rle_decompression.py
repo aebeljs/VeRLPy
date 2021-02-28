@@ -15,8 +15,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
 coverage = []
-total_coverage = []
-total_set_coverage = []
+total_binary_coverage = [0] * 8
 count_width = 6
 word_width = 4
 random.seed(1)
@@ -49,7 +48,7 @@ def monitor_signals(dut):
 @cocotb.test()
 def run_test(dut):
     CAP = 1000
-    NUM_EPISODES = 1000
+    NUM_EPISODES = 500
     BATCH_SIZE = 8
     ETA = 1e-4
     global EPS_START
@@ -106,7 +105,7 @@ def run_test(dut):
     N = 400
 
     suffix = "_N=" + str(N) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
-    suffix1 = "_00000010"
+    suffix1 = "_5"
     Q_val_list = []
 
     # suffix = "_m=" + str(M) + ",numEps=" + str(NUM_EPISODES)
@@ -229,14 +228,16 @@ def run_test(dut):
             yield RisingEdge(dut.CLK)
 
         # process coverage of this episode here
-        total_coverage.extend(coverage)
+        binary_coverage = [0] * 8
+        for item in coverage:
+            for k in range(len(item)):
+                binary_coverage[k] += (int)(item[k])
+                total_binary_coverage[k] += (int)(item[k])
 
-        set_coverage = list(dict.fromkeys(coverage))
 
-        print("last coverage: ", set_coverage)
-        total_set_coverage.extend(set_coverage)
+        print("last coverage: ", binary_coverage)
 
-        reward = get_reward_based_on_states_visited(set_coverage)
+        reward = get_reward_based_on_states_visited(binary_coverage)
         print("reward: ", reward)
 
         action_taken, next_state = Z, State([])
@@ -304,41 +305,14 @@ def run_test(dut):
     plt.savefig('./hist_of_actions'+suffix1 + suffix + '.png', bbox_inches='tight')
     plt.close()
 
-    total_coverage.sort()
-    from collections import Counter
-    labels = list(Counter(total_coverage).keys()) # equals to list(set(words))
-    counts = list(Counter(total_coverage).values()) # counts the elements' frequency
-    print('Coverage histogram')
-    for c in range(len(labels)):
-        print(labels[c], counts[c])
-    # # remove 00000001 for plotting
-    # for p in range(len(labels)):
-    #     if labels[p] == '00000001':
-    #         labels.pop(p)
-    #         counts.pop(p)
-    #         break
-    plt.vlines(labels, 0, counts, color='C0', lw=4)
+    print(total_binary_coverage)
+    plt.vlines(list(range(8)), 0, total_binary_coverage, color='C0', lw=4)
     plt.grid()
     plt.xticks(rotation = 90)
     plt.tight_layout()
-    plt.title("Histogram of covered states\n")
-    plt.savefig('./hist_of_coverage' +suffix1+ suffix + '.png', bbox_inches='tight')
+    plt.title("Histogram of binary coverage\n")
+    plt.savefig('./hist_of_binary_coverage' +suffix1+ suffix + '.png', bbox_inches='tight')
     plt.close()
-
-    total_set_coverage.sort()
-    labels = list(Counter(total_set_coverage).keys()) # equals to list(set(words))
-    counts = list(Counter(total_set_coverage).values()) # counts the elements' frequency
-    print('Set coverage histogram')
-    for c in range(len(labels)):
-        print(labels[c], counts[c])
-    plt.vlines(labels, 0, counts, color='C0', lw=4)
-    plt.grid()
-    plt.xticks(rotation = 90)
-    plt.tight_layout()
-    plt.title("Histogram of set of covered states\n")
-    plt.savefig('./hist_of_set_coverage' +suffix1+ suffix + '.png', bbox_inches='tight')
-    plt.close()
-
 
 def get_action(curr_state, net, action_tensor, steps_done):
     """
@@ -367,9 +341,9 @@ def get_action(curr_state, net, action_tensor, steps_done):
         print("best choice", best_action)
         return best_action
 
-def get_reward_based_on_states_visited(coverage):
+def get_reward_based_on_states_visited(binary_coverage):
     reward = 0
-    for visited_state in coverage:
-        if(visited_state == '00000010'):
-            reward += 10
+    events_rewarded = [5]
+    for item in events_rewarded:
+        reward += binary_coverage[item]
     return reward

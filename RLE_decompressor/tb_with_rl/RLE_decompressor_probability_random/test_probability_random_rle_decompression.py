@@ -6,8 +6,9 @@ import sys
 from collections import defaultdict
 
 coverage = []
-total_coverage = []
+total_binary_coverage = [0] * 8
 total_set_coverage = []
+total_coverage = []
 count_width = 6
 word_width = 4
 random.seed(1)
@@ -44,7 +45,7 @@ def run_test(dut):
     tb = Testbench(dut)
     cocotb.fork(get_decompressed_output(dut,tb))
 
-    NUM_EPISODES = 1000
+    NUM_EPISODES = 500
     activation_map = []
     input_list = []
     word_list = []
@@ -55,15 +56,6 @@ def run_test(dut):
 
     word_width = 4
     count_width = 6
-
-    # print(3)
-    # print(3 << 64)
-    # print(str(bin(3<<63))[2:])
-    # print((3<<63) & 0xFFFFFFFFFFFFFFFF)
-    # print(str(bin((3<<63) & 0xFFFFFFFFFFFFFFFF))[2:])
-    # print(3)
-    # print(3>>1)
-    # return
 
     # suffix = "_m=" + str(M) + ",numEps=" + str(NUM_EPISODES)
     suffix = "_N=" + str(N) + ",numEps=" + str(NUM_EPISODES) + ',word_width=' + str(word_width) + ',count_width=' + str(count_width)
@@ -192,6 +184,10 @@ def run_test(dut):
         set_coverage = list(set(coverage))
         print('set coverage:', set_coverage)
         total_set_coverage.extend(set_coverage)
+        for item in coverage:
+            for k in range(len(item)):
+                total_binary_coverage[k] += (int)(item[k])
+
 
     tb.stop()
     yield RisingEdge(dut.CLK)
@@ -210,6 +206,15 @@ def run_test(dut):
     plt.tight_layout()
     plt.title("Histogram of covered states\n")
     plt.savefig('./hist_of_coverage' + suffix + '.png', bbox_inches='tight')
+    plt.close()
+
+    print(total_binary_coverage)
+    plt.vlines(list(range(8)), 0, total_binary_coverage, color='C0', lw=4)
+    plt.grid()
+    plt.xticks(rotation = 90)
+    plt.tight_layout()
+    plt.title("Histogram of binary coverage\n")
+    plt.savefig('./hist_of_binary_coverage' + suffix + '.png', bbox_inches='tight')
     plt.close()
 
     total_set_coverage.sort()
