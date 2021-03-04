@@ -113,7 +113,7 @@ package rle_decompression;
             else
                 rg_counter <= lv_zero_count;
 
-            if(lv_update_count >= 64) begin
+            if(lv_update_count > 64) begin
                 lv_allowed_count = truncate(64-lv_count);
                 rg_next_count <= lv_allowed_count;
                 rg_zero_counter <= 64;
@@ -127,7 +127,7 @@ package rle_decompression;
             end
         endrule
 
-        rule rl_decompress_zero(wr_send_output && rg_counter != 0);
+        rule rl_decompress_zero(wr_send_output && rg_counter != 0 && rg_next_count == 0);
             wr_decompressed_output <= 0;
             wr_output_valid <= True;
             rg_counter <= rg_counter - 1;
