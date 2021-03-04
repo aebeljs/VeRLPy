@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from test_1state_RL_helper import *
+from test_multistate_RL_helper import *
 
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -18,6 +18,7 @@ coverage = []
 total_binary_coverage = [0] * 8
 count_width = 6
 word_width = 4
+action_tensor = torch.arange(0.0, 1.0, 0.01)
 random.seed(1)
 
 @coroutine
@@ -58,17 +59,17 @@ def run_test(dut):
     EPS_END = 0.05
     EPS_DECAY = 500
     TARGET_UPDATE = 5
-    N_state = 0
-    N_action = 1
+    N_state = 8
+    N_action = 100
     replay_buffer = ReplayMemory(CAP)
-    init_state = State([])
+    init_state = [0] * 8
 
     action_list = []
-    policy_net = DQN(N_state, N_action).to(device)
+    policy_net = DQN_multistate(N_state, N_action).to(device)
 
     for param in policy_net.parameters():
         nn.init.normal_(param)
-    target_net = DQN(N_state, N_action).to(device)
+    target_net = DQN_multistate(N_state, N_action).to(device)
     target_net.load_state_dict(policy_net.state_dict())
     target_net.eval()
 
@@ -76,14 +77,9 @@ def run_test(dut):
     criterion = nn.MSELoss()
 
     N = 400 # total number of elements in activation map
-    action_tensor = torch.arange(0.00, 1.00, 0.01)
+    action_tensor = torch.arange(0.0, 1.0, 0.01)
     action_tensor = action_tensor.reshape(action_tensor.shape[0], 1)
     print(action_tensor.shape)
-
-    # normalize
-    mean = torch.mean(action_tensor)
-    std = torch.std(action_tensor)
-    norm_action_tensor = (action_tensor - mean) / std
 
     word_width = 4 #Can be randomised to pick only from the set 1, 2, 4, 8
     count_width = 6 # count_width = random.randint(1,8)
@@ -111,7 +107,7 @@ def run_test(dut):
     # suffix = "_m=" + str(M) + ",numEps=" + str(NUM_EPISODES)
     # suffix = "_N=" + str(N) + ",numEps=" + str(NUM_EPISODES) + ',word_width=' + str(word_width) + ',count_width=' + str(count_width)
     for i in range(NUM_EPISODES):
-        print("--------------------------")
+        print('--------------------')
         print("Episode : ", i + 1)
 
         coverage.clear()
@@ -126,9 +122,8 @@ def run_test(dut):
             yield RisingEdge(dut.CLK)
 
         # get action
-        Z = get_action(curr_state, target_net, norm_action_tensor, i + 1)
-        Z = (Z * std + mean)
-        print("action: ", Z)
+        print('curr state', curr_state)
+        Z = get_action(curr_state, policy_net, i + 1)
 
         chosen_actions.append(Z.item())
 
@@ -241,35 +236,54 @@ def run_test(dut):
         reward = get_reward_based_on_states_visited(binary_coverage)
         print("reward: ", reward)
 
-        action_taken, next_state = Z, State([])
+        action_taken, next_state, done = Z, binary_coverage, 1.
 
         # store in replay buffer
-        replay_buffer.push(curr_state, action_taken, next_state, reward)
+        curr_state -= np.mean(curr_state)
+        if(np.std(curr_state) != 0):
+            curr_state /= np.std(curr_state)
+        next_state -= np.mean(next_state)
+        if(np.std(next_state) != 0):
+            next_state /= np.std(next_state)
 
-        curr_state = next_state
+        print('training sample')
+        print(curr_state, action_taken, next_state, reward, done)
+        replay_buffer.push(curr_state, action_taken, next_state, reward, done)
 
         # optimize the network
         if len(replay_buffer) < BATCH_SIZE:
             continue
         transitions = replay_buffer.sample(BATCH_SIZE)
         batch = Transition(*zip(*transitions))
+        curr_state_batch = torch.FloatTensor(batch.state)
+        # print('state', curr_state_batch.shape)
         action_batch = torch.FloatTensor(batch.action).reshape(len(batch.action), -1)
+        # print('action', action_batch.shape)
+        next_state_batch = torch.FloatTensor(batch.next_state)
+        # print('next state', next_state_batch.shape)
         reward_batch = torch.FloatTensor(batch.reward).reshape(len(batch.reward), -1)
+        # print('reward', reward_batch.shape)
+        done_batch = torch.FloatTensor(batch.done).reshape(len(batch.done), -1)
+        # print('done', done_batch.shape)
 
         if (i + 1) % 20 == 0:
+            print("states :\n", curr_state_batch)
             print("actions :\n", action_batch)
+            print("next states :\n", next_state_batch)
             print("rewards :\n", reward_batch)
 
         policy_net.train()
         optimizer.zero_grad()
         # run the batch through the net
-        norm_action_batch = (action_batch - mean) / std
-        Q_values = policy_net(norm_action_batch)
+        targets = reward_batch # as done_batch is always 1 since it is single step episodes
+        # print(action_batch)
+        p = (action_batch * 100 - 1).long()
+        Q_values = policy_net(curr_state_batch).gather(1, p)
 
         if (i + 1) % 20 == 0:
             print("net_Qs :\n", Q_values)
 
-        loss = criterion(Q_values, reward_batch)
+        loss = criterion(Q_values, targets)
         print("loss: ", loss)
         loss.backward()
 
@@ -283,19 +297,14 @@ def run_test(dut):
 
         optimizer.step()
 
+        curr_state = next_state
+
         if (i + 1) % 20 == 0:
             print("updated head weights: \n", policy_net.head.weight)
-            print("updated net_Qs: \n", policy_net(norm_action_batch))
+            print("updated net_Qs: \n", policy_net(torch.FloatTensor(curr_state)))
 
         if (i % TARGET_UPDATE) == 0:
             target_net.load_state_dict(policy_net.state_dict())
-
-
-
-    print("Learned Q function:")
-    for x_ in range(len(norm_action_tensor)):
-        test_ = norm_action_tensor[x_]
-        print(test_ * std + mean, target_net(test_))
 
     tb.stop()
     yield RisingEdge(dut.CLK)
@@ -315,7 +324,7 @@ def run_test(dut):
     plt.savefig('./hist_of_binary_coverage' +suffix1+ suffix + '.png', bbox_inches='tight')
     plt.close()
 
-def get_action(curr_state, net, action_tensor, steps_done):
+def get_action(curr_state, net, steps_done):
     """
     returns the number of consecutive zeros as per current policy
     """
@@ -333,12 +342,14 @@ def get_action(curr_state, net, action_tensor, steps_done):
 
     # choose epsilon-greedily
     if(sample < eps_threshold):
-        x = random.choice(list(action_tensor))
+        x = random.choice(list(torch.arange(0.0, 1.0, 0.01)))
         print("random choice", x)
         return x
     with torch.no_grad():
-        outputs = net(action_tensor)
-        best_action = action_tensor[torch.argmax(outputs).item(), :].item()
+        outputs = net(torch.FloatTensor(curr_state))
+        # outputs should be a vector of size 100 each corresponding to one probab value
+        _, best_action_idx = torch.max(outputs, dim=0)
+        best_action = torch.arange(0.0, 1.0, 0.01)[best_action_idx]
         print("best choice", best_action)
         return best_action
 
