@@ -208,16 +208,17 @@ def run_test(dut):
         input_list.insert(0, input_list.pop(first_compressed_zero_idx))
 
         ##Initial compressed input alone will have details of word width and count width
-        compressed_input = input_list[0]
-        for compressed_input in input_list:
+        n2 = 0
+        while n2 < len(input_list):
             if(dut.RDY_ma_get_inputs != 1):
-                yield RisingEdge(dut.RDY_ma_get_inputs)
-            yield tb.input_drv.send(InputTransaction(tb,1,compressed_input))
-            yield tb.input_drv.send(InputTransaction(tb,0,0))
-            ##Input Randomisation
-            # compressed_input = input_list[n2]
-            yield RisingEdge(dut.CLK)
-            yield RisingEdge(dut.CLK)
+                yield RisingEdge(dut.CLK)
+            else:
+                # print(" Compressed input : ",n1,n2)
+                yield tb.input_drv.send(InputTransaction(tb,1,input_list[n2]))
+                yield tb.input_drv.send(InputTransaction(tb,0,0))
+                for delay in range(2):
+                    yield RisingEdge(dut.CLK)
+                n2 += 1
 
         print("Driven all inputs for this episode ")
         for delay in range(5):
@@ -227,6 +228,25 @@ def run_test(dut):
 
         for delay in range(10):
             yield RisingEdge(dut.CLK)
+
+        # print(tb.expected_output.count)
+        # print(tb.expected_output)
+        # print(tb.got_output.count)
+        # print(tb.got_output)
+        tb.compare_outputs()
+        print('Outputs compared')
+        tb.start_decompression=1
+        tb.next_count=0
+        tb.next_word=0
+        tb.cont_count=0
+
+        tb.decompress_word=0
+        tb.compressed_word=0
+        tb.compressed_count=0
+        tb.zero_counter=64
+        tb.word_counter=64
+        tb.counter=0
+        tb.count_valid=0
 
         # process coverage of this episode here
         binary_coverage = [0] * 8

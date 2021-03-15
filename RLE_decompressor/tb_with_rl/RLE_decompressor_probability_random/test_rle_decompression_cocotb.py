@@ -148,12 +148,12 @@ class Monitor(BusMonitor):
 class DUTScoreboard(Scoreboard):
     def compare(self, count, exp, got, log, **_):
         for i in range(count):
-            print(" ",i,exp[i],got[i])
+            # print(" ",i,exp[i],got[i])
             if(got[i] != exp[i]):
                 print("Values mismatched")
                 #exit(1)
-            else:
-                print("Values matched")
+            # else:
+                # print("Values matched")
 
 
 class Testbench(object):
@@ -309,7 +309,7 @@ class Testbench(object):
                     #print("4")
                     self.counter = self.counter - 1
                     self.cont_count = 1
-                elif(self.count_valid == 1): 
+                elif(self.count_valid == 1):
                     #print("5")
                     if(self.counter == 0 and self.decompress_word == 0):
                         #print("6")
@@ -318,12 +318,12 @@ class Testbench(object):
                     else:
                         #print("7")
                         self.count_valid = 1
-                    self.cont_count = 0               
+                    self.cont_count = 0
             elif(self.counter == 0):
                 #print("8")
                 self.count_valid = 0
 
-                
+
         #print('[MODEL] {0:<25} : {1}'.format('word_width',self.word_width))
         #print('[MODEL] {0:<25} : {1}'.format('count_width',self.count_width))
         #print('[MODEL] {0:<25} : {1}'.format('next_count',self.next_count))

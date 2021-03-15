@@ -37,54 +37,6 @@ def monitor_signals(dut):
         ## ** rg_next_count != 0
         ##rg_is_next_word == True
 
-@coroutine
-def dut_input_drive(dut,tb,input_list,n1):
-    dut.RST_N <= 0
-    yield Timer(2)
-    dut.RST_N <= 1
-
-    for delay in range(10):
-        yield RisingEdge(dut.CLK)
-    n2 = 1
-    compressed_input = input_list[0]
-    while n2 < len(input_list):
-        if(dut.RDY_ma_get_inputs != 1):
-            yield RisingEdge(dut.CLK)
-        else:
-            print(" Compressed input : ",n1,n2)
-            yield tb.input_drv.send(InputTransaction(tb,1,compressed_input))
-            yield tb.input_drv.send(InputTransaction(tb,0,0))
-            ##Input Randomisation
-            compressed_input = input_list[n2]
-            for delay in range(2):
-                yield RisingEdge(dut.CLK)
-            n2=n2+1
-    print("Driven all inputs for this episode ")
-    for delay in range(5):
-        yield RisingEdge(dut.CLK)
-    if(dut.RDY_ma_send_decompressed_output == 1):
-        yield FallingEdge(dut.RDY_ma_send_decompressed_output)
-    for delay in range(10):
-        yield RisingEdge(dut.CLK)
-    print(tb.expected_output.count)
-    print(tb.expected_output)
-    print(tb.got_output.count)
-    print(tb.got_output)
-    tb.compare_outputs()
-    print('Outputs compared')
-    tb.start_decompression=1
-    tb.next_count=0
-    tb.next_word=0
-    tb.cont_count=0
-    
-    tb.decompress_word=0
-    tb.compressed_word=0
-    tb.compressed_count=0
-    tb.zero_counter=64
-    tb.word_counter=64
-    tb.counter=0
-    tb.count_valid=0
-
 
 @cocotb.test()
 def run_test(dut):
@@ -117,6 +69,13 @@ def run_test(dut):
         coverage.clear()
         activation_map.clear()
         input_list.clear()
+
+        dut.RST_N <= 0
+        yield Timer(2)
+        dut.RST_N <= 1
+
+        for delay in range(10):
+            yield RisingEdge(dut.CLK)
 
         Pr_zero = (int)(random.random() * 100) / 100. # get probability value from [0.01,0.02,...,0.99]
         #Pr_zero = 0.57
@@ -199,11 +158,46 @@ def run_test(dut):
         input_list.insert(0, input_list.pop(first_compressed_zero_idx))
         print(input_list)
 
-        ##Initial compressed input alone will have details of word width and count width
-        # input_list = [13908259987590759268, 5466339630142750055, 7708008654023722417, 13711433221677006084, 4791302593951332211, 297309096011432976, 12804395393502841569, 17160679680036653830, 3696519104342578997, 2325550866100392001, 17597997525760624910, 5843402158363911501, 17183764384036183007, 4829002859638981380, 8450570782378548667, 557071639388608969, 297522366668538896, 11045939112885484732, 13137551342047707595, 15582317614200405168, 3477069253226807425, 5742721319435764721, 4284827710540203280, 2603391325574209430, 145294693537693956, 11380606908143380531, 17972173053635191860, 581036954334987297, 9376578776570838914, 2255091308962467159, 6672892889147781230, 1207250718181834817, 3287439725080637815, 18268255891619857001, 1915831582312376255, 1161638398935816]
-        # input_list = [9368631043577398116, 2216776977775572170, 14301683823907461990, 15121658413985603301, 11948213363879247217, 581257939524850704, 2183256803474030594, 9779846399426106866, 268734901004314769, 2360453622603452609, 17384146028894171654, 5107697065764309873, 7179854534921886875, 4684889037429817604, 16462430396108157943, 12153119009882216616, 293099065720318992, 18093367915201532687, 15838585278011049037, 10053140081791194139, 4629986359788179714, 17202326133095786986, 7074750978420750278, 11019334811863768481, 4687191977688581892, 4164206021795012246, 2249524958253636221, 585614273313575968, 14403408446759471993, 2756744041155459975, 9012741384553755700, 1171516520468320450, 16532561956772814059, 147720, 2699922016]
-        yield dut_input_drive(dut,tb,input_list,n1)
-        
+        n2 = 0
+        while n2 < len(input_list):
+            if(dut.RDY_ma_get_inputs != 1):
+                yield RisingEdge(dut.CLK)
+            else:
+                # print(" Compressed input : ",n1,n2)
+                yield tb.input_drv.send(InputTransaction(tb,1,input_list[n2]))
+                yield tb.input_drv.send(InputTransaction(tb,0,0))
+                for delay in range(2):
+                    yield RisingEdge(dut.CLK)
+                n2 += 1
+
+        print("Driven all inputs for this episode ")
+        for delay in range(5):
+            yield RisingEdge(dut.CLK)
+        if(dut.RDY_ma_send_decompressed_output == 1):
+            yield FallingEdge(dut.RDY_ma_send_decompressed_output)
+
+        for delay in range(10):
+            yield RisingEdge(dut.CLK)
+
+        # print(tb.expected_output.count)
+        # print(tb.expected_output)
+        # print(tb.got_output.count)
+        # print(tb.got_output)
+        tb.compare_outputs()
+        print('Outputs compared')
+        tb.start_decompression=1
+        tb.next_count=0
+        tb.next_word=0
+        tb.cont_count=0
+
+        tb.decompress_word=0
+        tb.compressed_word=0
+        tb.compressed_count=0
+        tb.zero_counter=64
+        tb.word_counter=64
+        tb.counter=0
+        tb.count_valid=0
+
         # process coverage of this episode here
         total_coverage.extend(coverage)
         set_coverage = list(set(coverage))
