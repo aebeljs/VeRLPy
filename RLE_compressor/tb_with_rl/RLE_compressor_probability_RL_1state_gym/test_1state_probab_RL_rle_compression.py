@@ -3,6 +3,8 @@ from test_rle_compression_cocotb import *
 import itertools
 import matplotlib.pyplot as plt
 import sys
+import os
+import fcntl
 from collections import defaultdict
 
 coverage = []
@@ -18,6 +20,7 @@ def monitor_signals(dut):
             (int)(dut.rg_zero_counter.value == 64),
             (int)(dut.rg_counter.value == (2**count_width - 2)),
             (int)(dut.rg_next_count != 0)]
+        s = ''.join(map(str, s))
         coverage.append(s)
         if(DEBUG_LOG):
             cycle_tracker.append((int)(dut.EN_ma_get_input.value))
@@ -77,8 +80,8 @@ def run_test(dut):
         yield RisingEdge(dut.CLK)
 
         # get action
-        Z = (int)(random.random() * 100) / 100.
-        # Z = (int)(random.random() * 1000) / 1000.
+        print('waiting for RL action')
+        Z = float(wait_till_read('./RL_output.txt'))
         print("action: ", Z)
 
         chosen_actions.append(Z)
@@ -139,56 +142,12 @@ def run_test(dut):
 
         if(DEBUG_LOG):
             log_episode(f, i+1, Z, coverage, input_tracker, cycle_tracker, state_tracker_dict)
-        # calculate the reward
-        coverage.sort()
-        for item in coverage:
-            for k in range(len(item)):
-                total_binary_coverage[k] += (int)(item[k])
-        # set_coverage has the set of states covered
-        set_coverage = list(coverage for coverage,_ in itertools.groupby(coverage))
-        coverage_list = coverage_list + set_coverage
-        print("i = ", i)
-        print("last coverage: ", set_coverage)
+
+        # write to a file the coverage, reward, etc.
+        write_to_file('./cocotb_output.txt', coverage)
+
 
     tb.stop()
-
-    if(DEBUG_LOG):
-        log_aggregate(f, state_tracker_dict)
-        f.close()
-    # plot results
-    plt.hist(chosen_actions)
-    plt.title("Stochastic input - Histogram of probability of zero in the activation map\n")
-    plt.tight_layout()
-    plt.savefig('./hist_of_actions' + suffix + '.png', bbox_inches='tight')
-    plt.close()
-
-    state_list = []
-    for cov in coverage_list:
-        x = ''.join(map(str, cov))
-        state_list.append(x)
-
-    state_list.sort()
-    from collections import Counter
-    labels = Counter(state_list).keys() # equals to list(set(words))
-    counts = Counter(state_list).values() # counts the elements' frequency
-    plt.vlines(labels, 0, counts, color='C0', lw=4)
-    plt.grid()
-    plt.xticks(rotation = 90)
-    plt.tight_layout()
-    # plt.hist(state_list)
-    plt.title("Stochastic input - Histogram of covered states\n")
-    plt.savefig('./hist_of_coverage' + suffix + '.png', bbox_inches='tight')
-    plt.close()
-
-    print('Binary coverage')
-    print(total_binary_coverage)
-    plt.vlines(list(range(4)), 0, total_binary_coverage, color='C0', lw=4)
-    plt.grid()
-    plt.xticks(rotation = 90)
-    plt.tight_layout()
-    plt.title("Histogram of binary coverage\n")
-    plt.savefig('./hist_of_binary_coverage' + suffix + '.png', bbox_inches='tight')
-    plt.close()
 
 def log_episode(file, episode, action, coverage_vec_seq, map_val_seq, cycle_vec_seq, dict):
     file.write('Episode ' + str(episode) + '\n')
@@ -207,3 +166,29 @@ def log_episode(file, episode, action, coverage_vec_seq, map_val_seq, cycle_vec_
 
 def log_aggregate(file, dict):
     print(dict, file=file)
+
+def wait_till_read(filename):
+    while(True):
+        # keep looping this
+        if(os.path.isfile(filename)):
+            with open(filename, "r+") as f:
+                fcntl.flock(f, fcntl.LOCK_EX) # lock to avoid concurrency issues
+                x = f.readline()
+                if(len(x) != 0):
+                    # RL has output something
+                    f.truncate(0)
+                    fcntl.flock(f, fcntl.LOCK_UN)
+                    f.close()
+                    break
+                fcntl.flock(f, fcntl.LOCK_UN)
+                f.close()
+    return x
+
+def write_to_file(filename, cov):
+    with open(filename, "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX) # lock to avoid concurrency issues
+        for x in cov:
+            f.write(x + '\n')
+        fcntl.flock(f, fcntl.LOCK_UN)
+        f.close()
+        print('coverage of size', len(cov), 'written')
