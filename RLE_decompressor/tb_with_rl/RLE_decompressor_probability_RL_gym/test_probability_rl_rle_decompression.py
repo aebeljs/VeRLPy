@@ -11,6 +11,10 @@ count_width = 6
 word_width = 4
 random.seed(1)
 
+import json
+action_dict = {}
+coverage_dict = {}
+c = 0
 
 @coroutine
 def monitor_signals(dut):
@@ -44,7 +48,10 @@ def run_test(dut):
     tb = Testbench(dut)
     cocotb.fork(get_decompressed_output(dut,tb))
 
-    NUM_EPISODES = 500
+    global c
+    global action_dict
+    global coverage_dict
+    NUM_EPISODES = 10
     activation_map = []
     input_list = []
     word_list = []
@@ -79,6 +86,9 @@ def run_test(dut):
 
         print('waiting for RL action', n1)
         Pr_zero = float(wait_till_read('./RL_output.txt'))
+
+        print('step', c)
+        action_dict[str(c)] = Pr_zero
 
         # Pr_zero = (int)(random.random() * 100) / 100. # get probability value from [0.01,0.02,...,0.99]
         print('Probab:', Pr_zero)
@@ -202,9 +212,35 @@ def run_test(dut):
         # process coverage of this episode here
 
         # write to a file the coverage, reward, etc.
+        print('before')
+        for x in coverage_dict:
+            print(len(coverage_dict[x]))
+        coverage_dict[str(c)] = coverage.copy()
+        c += 1
+        print('after')
+        for x in coverage_dict:
+            print(len(coverage_dict[x]))
         write_to_file('./cocotb_output.txt', coverage)
+        if(len(coverage_dict[str(c - 1)]) != len(coverage)):
+            print("NOT EQUAL", len(coverage), len(coverage_dict[str(c - 1)]))
+
     tb.stop()
 
+    with open('action.txt', 'w') as file:
+         file.write(json.dumps(action_dict)) # use `json.loads` to do the reverse
+         file.close()
+
+    with open('coverage.txt', 'w') as file:
+         file.write(json.dumps(coverage_dict)) # use `json.loads` to do the reverse
+         file.close()
+
+    with open('coverage.txt', 'r') as file:
+         cocotb_coverage = json.load(file) # use `json.loads` to do the reverse
+         file.close()
+
+    print(cocotb_coverage == coverage_dict)
+    for x in cocotb_coverage:
+        print(x, len(cocotb_coverage[x]))
 
 def wait_till_read(filename):
     while(True):
