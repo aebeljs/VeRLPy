@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import sys
 import os
 import fcntl
+import re
 
 coverage = []
 count_width = 6
@@ -43,7 +44,7 @@ def run_test(dut):
     tb = Testbench(dut)
     cocotb.fork(get_decompressed_output(dut,tb))
 
-    NUM_EPISODES = 10
+    NUM_EPISODES = 500
     activation_map = []
     input_list = []
     word_list = []
@@ -55,6 +56,8 @@ def run_test(dut):
     word_width = 4
     count_width = 6
 
+    FSM_states = ['0', '1']
+    history = ''
     # suffix = "_m=" + str(M) + ",numEps=" + str(NUM_EPISODES)
     suffix = "_N=" + str(N) + ",numEps=" + str(NUM_EPISODES) + ',word_width=' + str(word_width) + ',count_width=' + str(count_width)
     for n1 in range(NUM_EPISODES):
@@ -77,19 +80,25 @@ def run_test(dut):
             yield RisingEdge(dut.CLK)
 
         print('waiting for RL action', n1)
-        Pr_zero = float(wait_till_read('./RL_output.txt'))
+        Pr_zero = wait_till_read('./RL_output.txt')
         # Pr_zero = (int)(random.random() * 100) / 100. # get probability value from [0.01,0.02,...,0.99]
         print('Probab:', Pr_zero)
+        Pr_zero = [float(i) for i in Pr_zero]
 
         design_config_string = count_width << 4 | word_width
 
         for n2 in range(N):
-            if(random.random() < Pr_zero):
+            curr_state = match(FSM_states, history)
+            # print(history)
+            # print(curr_state)
+            if(random.random() < Pr_zero[curr_state]):
                 # next element is 0
                 activation_map.append(0)
+                history += '0'
             else:
                 # next element is not 0
                 activation_map.append(random.randint(1, 2**(word_width*4)))
+                history += '1'
 
         # print(activation_map)
 
@@ -206,26 +215,36 @@ def run_test(dut):
 
 def wait_till_read(filename):
     while(True):
-        # keep looping this
         if(os.path.isfile(filename)):
             with open(filename, "r+") as f:
                 fcntl.flock(f, fcntl.LOCK_EX) # lock to avoid concurrency issues
-                x = f.readline()
-                if(len(x) != 0):
-                    # RL has output something
+                content = [line.rstrip() for line in f]
+                if(len(content) != 0):
                     f.truncate(0)
                     fcntl.flock(f, fcntl.LOCK_UN)
                     f.close()
+                    print(content[0])
+                    print('length of content read', len(content))
                     break
                 fcntl.flock(f, fcntl.LOCK_UN)
                 f.close()
-    return x
+    return content
 
-def write_to_file(filename, cov):
+def write_to_file(filename, content):
     with open(filename, "w") as f:
         fcntl.flock(f, fcntl.LOCK_EX) # lock to avoid concurrency issues
-        for x in cov:
-            f.write(x + '\n')
+        for x in content:
+            f.write(str(x) + '\n')
         fcntl.flock(f, fcntl.LOCK_UN)
         f.close()
-        print('coverage of size', len(cov), 'written')
+        print(len(content), 'written')
+
+def match(patterns, seq):
+    if((len(patterns) == 0) or (len(patterns[0]) == 0) or (len(seq) < len(patterns[0]))):
+        return 0 # idle state is taken as the first state
+    window = len(patterns[0])
+    for state in range(len(patterns)):
+        x = re.search(patterns[state], seq[-window:])
+        if(x is not None):
+            return state
+    return 0

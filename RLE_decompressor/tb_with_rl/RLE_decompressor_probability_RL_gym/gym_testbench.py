@@ -2,11 +2,6 @@ import gym
 import fcntl
 import os
 import matplotlib.pyplot as plt
-import json
-
-action_dict = {}
-coverage_dict = {}
-c = 0
 
 class RLEDecompressorSingleStateEnv(gym.Env):
     def __init__(self):
@@ -16,28 +11,14 @@ class RLEDecompressorSingleStateEnv(gym.Env):
         self.chosen_actions = []
 
     def step(self, action):
-        global c
-        global action_dict
-        global coverage_dict
-        print("step", c)
         observation = 0 # always constant as it is single state
         generator_probab = action * 0.01 # converts action to probab value
         print(generator_probab)
         self.chosen_actions.append(generator_probab)
-
-        action_dict[str(c)] = generator_probab
-
         write_to_file('./RL_output.txt', str(generator_probab))
         print('action write done----------------------')
         coverage = wait_till_read('./cocotb_output.txt')
-
-        coverage_dict[str(c)] = coverage
-        c += 1
-        if(len(coverage_dict[str(c - 1)]) != len(coverage)):
-            print("NOT EQUAL", len(coverage), len(coverage_dict[str(c - 1)]))
-
         observation, done, info = 0, True, {}
-
         binary_coverage = [0] * 8
         for item in coverage:
             # print(item)
@@ -99,39 +80,23 @@ from stable_baselines import DQN
 model = DQN(MlpPolicy, env, verbose=1, learning_starts=50, exploration_fraction=0.6, target_network_update_freq=10)
 model.learn(total_timesteps=10)
 
-with open('gym_action.txt', 'w') as file:
-     file.write(json.dumps(action_dict)) # use `json.loads` to do the reverse
-     file.close()
+model.save('DQN_decompressor')
 
-with open('gym_coverage.txt', 'w') as file:
-     file.write(json.dumps(coverage_dict)) # use `json.loads` to do the reverse
-     file.close()
 
-with open('gym_coverage.txt', 'r') as file:
-     gym_coverage = json.load(file) # use `json.loads` to do the reverse
-     file.close()
+print(env.total_binary_coverage)
+plt.vlines(list(range(8)), 0, env.total_binary_coverage, color='C0', lw=4)
+plt.grid()
+plt.xticks(rotation = 90)
+plt.tight_layout()
+plt.title("Histogram of binary coverage\n")
+plt.savefig('./hist_of_binary_coverage' +suffix1+ suffix + '.png', bbox_inches='tight')
+plt.close()
 
-print(gym_coverage == coverage_dict)
-for x in gym_coverage:
-    print(len(gym_coverage[x]))
-
-# model.save('DQN_decompressor')
-#
-#
-# print(env.total_binary_coverage)
-# plt.vlines(list(range(8)), 0, env.total_binary_coverage, color='C0', lw=4)
-# plt.grid()
-# plt.xticks(rotation = 90)
-# plt.tight_layout()
-# plt.title("Histogram of binary coverage\n")
-# plt.savefig('./hist_of_binary_coverage' +suffix1+ suffix + '.png', bbox_inches='tight')
-# plt.close()
-#
-# plt.hist(env.chosen_actions)
-# plt.tight_layout()
-# plt.title("Stochastic input using RL- Histogram of Pr(0) in the activation map\n" + "Reward scheme:"+ suffix1)
-# plt.savefig('./hist_of_actions'+suffix1 + suffix + '.png', bbox_inches='tight')
-# plt.close()
+plt.hist(env.chosen_actions)
+plt.tight_layout()
+plt.title("Stochastic input using RL- Histogram of Pr(0) in the activation map\n" + "Reward scheme:"+ suffix1)
+plt.savefig('./hist_of_actions'+suffix1 + suffix + '.png', bbox_inches='tight')
+plt.close()
 
 # run with this learnt policy
 # obs = env.reset()
