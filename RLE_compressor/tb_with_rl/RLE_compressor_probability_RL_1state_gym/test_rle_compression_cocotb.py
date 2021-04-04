@@ -109,7 +109,7 @@ class InputMonitor(BusMonitor):
                     'EN_ma_end_compression', self.bus.EN_ma_end_compression.value.integer))
                 print('[IN_MON] {0:<25} : {1}'.format(
                     'EN_mav_send_compressed_value', self.bus.EN_mav_send_compressed_value.value.integer))
-                ''' 
+                '''
                 vec = (
                     #
                     self.bus.ma_start_compression_word_width.value.integer,
@@ -308,7 +308,7 @@ class TestBench(object):
         RDY_mv_compression_done = 0
 
         if(EN_ma_start_compression == 1): ## Initialise counters and update the widths to
-                                          ## compressed_count 
+                                          ## compressed_count
             self.word_counter = 0
             self.counter = 0
             self.zero_counter = 8
@@ -364,7 +364,7 @@ class TestBench(object):
                                                                       mv_compression_done,
                                                                       RDY_mv_compression_done
                                                                       ))
-                    
+
                     mav_send_compressed_value = int(bin(count_value)[2:].zfill(self.count_width)[:temp_next_count],2) | (1 << 64)
                     self.zero_counter = 0
                     self.counter = 0
@@ -379,8 +379,8 @@ class TestBench(object):
                                                             RDY_mv_compression_done
                                                             ))
 
-                
-            
+
+
         else:
             if(EN_ma_get_input == 1):
                 if(ma_get_input_val == 0):
@@ -534,7 +534,7 @@ def start_compression(tb, word_width, count_width):
 def random_input_gen(tb):
     ma_start_compression_word_width = 0
     ma_start_compression_count_Width = 0
-    ma_get_input_val = random.randint(0,0xFFFF)
+    ma_get_input_val = random.randint(1,0xFFFF)
     EN_ma_start_compression = 0
     EN_ma_get_input = 1
     EN_ma_end_compression = 0

@@ -1,0 +1,30 @@
+Binary coverage
+[50222, 9144, 7904, 6710]
+500 eps learning_starts=50, learning_rate=0.005, train_freq=(2, 'episode'):
+[10383, 2677, 5580, 1792, 0]
+
+500 eps learning_starts=200, learning_rate=0.01, train_freq=(2, 'episode')
+[33678, 5596, 3705, 4082, 0]
+1000 eps, [00, 01, 10, 11]
+[36538, 7102, 10275, 4914, 0]
+
+500 eps, ['.'], learning strts=200, LR=0.01, update_freq=2, reward=[2,4]
+[119164, 6029, 141, 4032, 0]
+action moved to 0.0
+
+500 eps, ['.'], learning strts=490, LR = 0.01, update_freq=2, reward = [2,4] (random)
+[74991, 11409, 345, 8748, 0]
+
+500 eps, ['.'], learning strts=200, LR=0.001, update_freq=5, reward=[2,4]
+[32456, 5986, 3390, 4426, 0]
+action moved to 1.0
+
+500 eps, ['0', '1'], learning strts=200, LR=0.001, update_freq=5, reward=[2,4]
+[36004, 6546, 3566, 5034, 2]
+action [~1., ~0.6]
+
+500 eps, ['00', '01', '10', '11'], learning strts=200, LR=0.001, update_freq=5, reward=[2,4]
+[34988, 7485, 3429, 5804, 0]
+action [~1, ~0.1, ~0.8, ~0.9]
+
+

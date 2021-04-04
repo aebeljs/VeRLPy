@@ -19,7 +19,8 @@ def monitor_signals(dut):
         s = [(int)(dut.rg_word_counter.value == 16),
             (int)(dut.rg_zero_counter.value == 64),
             (int)(dut.rg_counter.value == (2**count_width - 2)),
-            (int)(dut.rg_next_count != 0)]
+            (int)(dut.rg_next_count != 0),
+            (int)(dut.rg_end_compression == 1)]
         s = ''.join(map(str, s))
         coverage.append(s)
         if(DEBUG_LOG):
@@ -28,7 +29,7 @@ def monitor_signals(dut):
 
 @cocotb.test()
 def run_test(dut):
-    NUM_EPISODES = 1000
+    NUM_EPISODES = 500
     global DEBUG_LOG
     DEBUG_LOG = False
     action_list = []
@@ -46,7 +47,7 @@ def run_test(dut):
 
     chosen_actions = []
     coverage_list = []
-    total_binary_coverage = [0] * 4
+    total_binary_coverage = [0] * 5
 
     suffix = "_N=" + str(N) + ",numEps=" + str(NUM_EPISODES) + ",word_w=" + str(word_width) + ",count_w=" + str(count_width)
 
@@ -187,8 +188,9 @@ def wait_till_read(filename):
 def write_to_file(filename, cov):
     with open(filename, "w") as f:
         fcntl.flock(f, fcntl.LOCK_EX) # lock to avoid concurrency issues
-        for x in cov:
-            f.write(x + '\n')
+        # for x in cov:
+        #     f.write(x + '\n')
+        f.write('\n'.join(cov))
         fcntl.flock(f, fcntl.LOCK_UN)
         f.close()
         print('coverage of size', len(cov), 'written')

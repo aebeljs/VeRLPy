@@ -7,7 +7,7 @@ class RLECompressorSingleStateEnv(gym.Env):
     def __init__(self):
         self.action_space = gym.spaces.Discrete(100) # 100 possible probability values in {0,1,...99}
         self.observation_space = gym.spaces.Discrete(1) # single state approach so this is enough
-        self.total_binary_coverage = [0] * 4
+        self.total_binary_coverage = [0] * 5
         self.chosen_actions = []
 
     def step(self, action):
@@ -21,9 +21,13 @@ class RLECompressorSingleStateEnv(gym.Env):
         coverage = wait_till_read('./cocotb_output.txt')
         observation, done, info = 0, True, {}
 
-        binary_coverage = [0] * 4
+        binary_coverage = [0] * 5
         for item in coverage:
             # print(item)
+            if(len(item) != 5):
+                print("wrong" + item)
+                # for j in range(len(item)):
+                    # print(item[j])
             for k in range(len(item)):
                 binary_coverage[k] += int(item[k])
                 self.total_binary_coverage[k] += int(item[k])
@@ -36,8 +40,8 @@ class RLECompressorSingleStateEnv(gym.Env):
         # reset device and testbench here too
         return state
 
-suffix1 = '_5'
-suffix = "_N=" + '400' + ",numEps=" + '1000' + ',word_width=' + '4' + ',count_width=' + '6'
+suffix1 = '_2'
+suffix = "_N=" + '400' + ",numEps=" + '500' + ',word_width=' + '4' + ',count_width=' + '6'
 def get_reward_based_on_states_visited(binary_coverage):
     reward = 0
     events_rewarded = [2]
@@ -58,7 +62,7 @@ def wait_till_read(filename):
             with open(filename, "r+") as f:
                 fcntl.flock(f, fcntl.LOCK_EX) # lock to avoid concurrency issues
                 coverage = [line.rstrip() for line in f]
-
+                # coverage = f.read().splitlines()
                 if(len(coverage) != 0):
                     # RL has output something
                     f.truncate(0)
@@ -80,13 +84,13 @@ from stable_baselines.deepq.policies import MlpPolicy
 from stable_baselines import DQN
 
 model = DQN(MlpPolicy, env, verbose=1, learning_starts=50, exploration_fraction=0.6, target_network_update_freq=10)
-model.learn(total_timesteps=1000)
+model.learn(total_timesteps=500)
 
 model.save('DQN_compressor')
 
 
 print(env.total_binary_coverage)
-plt.vlines(list(range(4)), 0, env.total_binary_coverage, color='C0', lw=4)
+plt.vlines(list(range(5)), 0, env.total_binary_coverage, color='C0', lw=4)
 plt.grid()
 plt.xticks(rotation = 90)
 plt.tight_layout()

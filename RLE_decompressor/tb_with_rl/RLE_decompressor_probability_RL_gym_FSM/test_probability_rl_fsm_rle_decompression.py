@@ -1,11 +1,6 @@
 import cocotb
 from test_rle_decompression_cocotb import *
-import itertools
-import matplotlib.pyplot as plt
-import sys
-import os
-import fcntl
-import re
+from helper import *
 
 coverage = []
 count_width = 6
@@ -89,8 +84,6 @@ def run_test(dut):
 
         for n2 in range(N):
             curr_state = match(FSM_states, history)
-            # print(history)
-            # print(curr_state)
             if(random.random() < Pr_zero[curr_state]):
                 # next element is 0
                 activation_map.append(0)
@@ -213,38 +206,39 @@ def run_test(dut):
 
     tb.stop()
 
-def wait_till_read(filename):
-    while(True):
-        if(os.path.isfile(filename)):
-            with open(filename, "r+") as f:
-                fcntl.flock(f, fcntl.LOCK_EX) # lock to avoid concurrency issues
-                content = [line.rstrip() for line in f]
-                if(len(content) != 0):
-                    f.truncate(0)
-                    fcntl.flock(f, fcntl.LOCK_UN)
-                    f.close()
-                    print(content[0])
-                    print('length of content read', len(content))
-                    break
-                fcntl.flock(f, fcntl.LOCK_UN)
-                f.close()
-    return content
-
-def write_to_file(filename, content):
-    with open(filename, "w") as f:
-        fcntl.flock(f, fcntl.LOCK_EX) # lock to avoid concurrency issues
-        for x in content:
-            f.write(str(x) + '\n')
-        fcntl.flock(f, fcntl.LOCK_UN)
-        f.close()
-        print(len(content), 'written')
-
-def match(patterns, seq):
-    if((len(patterns) == 0) or (len(patterns[0]) == 0) or (len(seq) < len(patterns[0]))):
-        return 0 # idle state is taken as the first state
-    window = len(patterns[0])
-    for state in range(len(patterns)):
-        x = re.search(patterns[state], seq[-window:])
-        if(x is not None):
-            return state
-    return 0
+# def wait_till_read(filename):
+#     while(True):
+#         if(os.path.isfile(filename)):
+#             with open(filename, "r+") as f:
+#                 fcntl.flock(f, fcntl.LOCK_EX) # lock to avoid concurrency issues
+#                 content = [line.rstrip() for line in f]
+#                 if(len(content) != 0):
+#                     f.truncate(0)
+#                     fcntl.flock(f, fcntl.LOCK_UN)
+#                     f.close()
+#                     print(content[0])
+#                     print('length of content read', len(content))
+#                     break
+#                 fcntl.flock(f, fcntl.LOCK_UN)
+#                 f.close()
+#     return content
+#
+# def write_to_file(filename, content):
+#     with open(filename, "w") as f:
+#         fcntl.flock(f, fcntl.LOCK_EX) # lock to avoid concurrency issues
+#         # for x in content:
+#         #     f.write(str(x) + '\n')
+#         f.write('\n'.join(content))
+#         fcntl.flock(f, fcntl.LOCK_UN)
+#         f.close()
+#         print(len(content), 'written')
+#
+# def match(patterns, seq):
+#     if((len(patterns) == 0) or (len(patterns[0]) == 0) or (len(seq) < len(patterns[0]))):
+#         return 0 # idle state is taken as the first state
+#     window = len(patterns[0])
+#     for state in range(len(patterns)):
+#         x = re.search(patterns[state], seq[-window:])
+#         if(x is not None):
+#             return state
+#     return 0
