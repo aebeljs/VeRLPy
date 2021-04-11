@@ -39,7 +39,7 @@ def run_test(dut):
     tb = Testbench(dut)
     cocotb.fork(get_decompressed_output(dut,tb))
 
-    NUM_EPISODES = 500
+    NUM_EPISODES = int(wait_till_read('./RL_output.txt')[0])
     activation_map = []
     input_list = []
     word_list = []
@@ -51,8 +51,9 @@ def run_test(dut):
     word_width = 4
     count_width = 6
 
-    FSM_states = ['0', '1']
-    history = ''
+    FSM_states = ['.']
+    write_to_file('./cocotb_output.txt', [len(FSM_states)])
+
     # suffix = "_m=" + str(M) + ",numEps=" + str(NUM_EPISODES)
     suffix = "_N=" + str(N) + ",numEps=" + str(NUM_EPISODES) + ',word_width=' + str(word_width) + ',count_width=' + str(count_width)
     for n1 in range(NUM_EPISODES):
@@ -66,6 +67,7 @@ def run_test(dut):
         coverage.clear()
         activation_map.clear()
         input_list.clear()
+        history = ''
 
         dut.RST_N <= 0
         yield Timer(2)
@@ -205,40 +207,3 @@ def run_test(dut):
         write_to_file('./cocotb_output.txt', coverage)
 
     tb.stop()
-
-# def wait_till_read(filename):
-#     while(True):
-#         if(os.path.isfile(filename)):
-#             with open(filename, "r+") as f:
-#                 fcntl.flock(f, fcntl.LOCK_EX) # lock to avoid concurrency issues
-#                 content = [line.rstrip() for line in f]
-#                 if(len(content) != 0):
-#                     f.truncate(0)
-#                     fcntl.flock(f, fcntl.LOCK_UN)
-#                     f.close()
-#                     print(content[0])
-#                     print('length of content read', len(content))
-#                     break
-#                 fcntl.flock(f, fcntl.LOCK_UN)
-#                 f.close()
-#     return content
-#
-# def write_to_file(filename, content):
-#     with open(filename, "w") as f:
-#         fcntl.flock(f, fcntl.LOCK_EX) # lock to avoid concurrency issues
-#         # for x in content:
-#         #     f.write(str(x) + '\n')
-#         f.write('\n'.join(content))
-#         fcntl.flock(f, fcntl.LOCK_UN)
-#         f.close()
-#         print(len(content), 'written')
-#
-# def match(patterns, seq):
-#     if((len(patterns) == 0) or (len(patterns[0]) == 0) or (len(seq) < len(patterns[0]))):
-#         return 0 # idle state is taken as the first state
-#     window = len(patterns[0])
-#     for state in range(len(patterns)):
-#         x = re.search(patterns[state], seq[-window:])
-#         if(x is not None):
-#             return state
-#     return 0

@@ -27,4 +27,17 @@ action [~1., ~0.6]
 [34988, 7485, 3429, 5804, 0]
 action [~1, ~0.1, ~0.8, ~0.9]
 
+500 eps, ['.'], learning strts=200, LR=0.001, update_freq=5, reward=[2,4], variable count_width
+[115031, 4858, 518357, 1758, 88796]
+action -> [0.]
+count_width -> 1
 
+1000 eps, ['.'], random, reward=none, variable count_width, variable fmap length
+[187699, 23838, 236604, 10924]
+
+1000 eps, ['.'], random, reward=4 (0101), variable count_width, variable fmap length
+learning_starts=300, learning_rate=0.001, train_freq=(5, 'episode')
+[66623, 9447, 72954, 3566, 2774]
+
+1000 eps, ['.'], random, reward=none, variable count_width, variable fmap length, 5th event is 0101
+[179860, 23543, 227743, 11576, 8973]
