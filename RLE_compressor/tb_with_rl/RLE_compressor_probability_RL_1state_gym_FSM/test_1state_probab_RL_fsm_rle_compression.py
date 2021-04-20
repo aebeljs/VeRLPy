@@ -27,6 +27,7 @@ def monitor_signals(dut):
 @cocotb.test()
 def run_test(dut):
     NUM_EPISODES = int(wait_till_read('./RL_output.txt')[0])
+    # NUM_EPISODES = 1000
     action_list = []
 
     global word_width
@@ -59,6 +60,7 @@ def run_test(dut):
         # get action
         print('waiting for RL action', i)
         Z = wait_till_read('./RL_output.txt')
+        # Z = ['0.512462424523714', '0.9434345122764985', '1.0']
         print("action: ", Z)
         Z = [float(i) for i in Z]
 

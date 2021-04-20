@@ -2,6 +2,7 @@ from helper import *
 import matplotlib.pyplot as plt
 from collections import Counter
 import random
+import gym
 import numpy as np
 
 c = 0
@@ -41,6 +42,7 @@ class RLEDecompressorSingleStateEnv(gym.Env):
         self.total_coverage.update(Counter(coverage))
 
         reward = get_reward_based_on_states_visited(binary_coverage)
+        print('reward:', reward)
         self.reward_list.append(reward)
         c += 1
         return observation, reward, done, info
@@ -59,7 +61,7 @@ def get_reward_based_on_states_visited(binary_coverage):
     return reward
 
 COVERAGE_LEN = 8
-NUM_EPISODES = 500
+NUM_EPISODES = 10
 write_to_file('./RL_output.txt', [NUM_EPISODES])
 NUM_SEQ_GEN_PARAMS = int(wait_till_read('./cocotb_output.txt')[0])
 NUM_DESIGN_ENV_PARAMS = 0
@@ -80,7 +82,7 @@ from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckA
 n_actions = env.action_space.shape[-1]
 action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
 
-model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1, learning_starts=50, learning_rate=0.005, train_freq=(2, 'episode'))
+model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1, learning_starts=5, learning_rate=0.005, train_freq=(2, 'episode'))
 model.learn(total_timesteps=NUM_EPISODES)
 
 model.save('DDPG_decompressor_num_action_params=' + str(env.num_action_params))

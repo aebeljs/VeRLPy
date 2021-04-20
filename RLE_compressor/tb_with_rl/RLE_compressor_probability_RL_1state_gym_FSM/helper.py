@@ -12,7 +12,7 @@ def wait_till_read(filename):
                     f.truncate(0)
                     fcntl.flock(f, fcntl.LOCK_UN)
                     f.close()
-                    print(content[0])
+                    # print(content[0])
                     print('length of content read', len(content))
                     break
                 fcntl.flock(f, fcntl.LOCK_UN)

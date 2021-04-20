@@ -40,6 +40,7 @@ def run_test(dut):
     cocotb.fork(get_decompressed_output(dut,tb))
 
     NUM_EPISODES = int(wait_till_read('./RL_output.txt')[0])
+    print('episodes', NUM_EPISODES)
     activation_map = []
     input_list = []
     word_list = []
@@ -69,10 +70,12 @@ def run_test(dut):
         input_list.clear()
         history = ''
 
+        print('test')
         dut.RST_N <= 0
         yield Timer(2)
         dut.RST_N <= 1
 
+        print('test')
         for delay in range(10):
             yield RisingEdge(dut.CLK)
 

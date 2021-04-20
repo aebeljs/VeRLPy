@@ -178,7 +178,7 @@ class Testbench(object):
         self.expected_output = []
         self.got_output = []
         self.scoreboard = DUTScoreboard(dut)
-        self.scoreboard.add_interface(self.mon, self.expected_output)
+        # self.scoreboard.add_interface(self.mon, self.expected_output)
 
         self.start_decompression = 1
         self.word_width = 4

@@ -54,7 +54,7 @@ class RLECompressorSingleStateEnv(gym.Env):
 
 def get_reward_based_on_states_visited(binary_coverage):
     reward = 0
-    events_rewarded = [4]
+    events_rewarded = [1, 3, 4]
     for item in events_rewarded:
         reward += binary_coverage[item]
     return reward
@@ -70,22 +70,24 @@ NUM_DESIGN_ENV_PARAMS = 2
 NUM_ACTION_PARAMS = NUM_SEQ_GEN_PARAMS + NUM_DESIGN_ENV_PARAMS
 
 # suffix1 = '_reward=2,4_history=' + str(np.log2(NUM_ACTION_PARAMS))
-suffix1 = '_reward=4,history=' + str(np.round(np.log2(NUM_SEQ_GEN_PARAMS)))
-suffix = "_N=" + 'var' + ",numEps=" + str(NUM_EPISODES) + ',word_width=' + '4' + ',count_width=' + 'var'
+suffix1 = '_reward=1,3,4,history=' + str(np.round(np.log2(NUM_SEQ_GEN_PARAMS)))
+suffix = "_N=" + 'x100' + ",numEps=" + str(NUM_EPISODES) + ',word_width=' + '4' + ',count_width=' + 'var'
 
 env = RLECompressorSingleStateEnv(NUM_ACTION_PARAMS, COVERAGE_LEN)
 
-from stable_baselines3 import DDPG
+from stable_baselines3 import DDPG, SAC
 from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
 
 # The noise objects for DDPG
 n_actions = env.action_space.shape[-1]
 action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
 
-model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1, learning_starts=995, learning_rate=0.001, train_freq=(5, 'episode'))
+model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1, learning_starts=100, learning_rate=0.001, train_freq=(5, 'episode'))
+# model = SAC("MlpPolicy", env, action_noise=action_noise, verbose=1)
 model.learn(total_timesteps=NUM_EPISODES)
 
 model.save('DDPG_compressor_num_action_params=' + str(env.num_action_params))
+# model.save('SAC_compressor_num_action_params=' + str(env.num_action_params))
 
 print(env.total_binary_coverage)
 plt.vlines(list(range(COVERAGE_LEN)), 0, env.total_binary_coverage, color='C0', lw=4)
