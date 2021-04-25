@@ -1,4 +1,4 @@
-COVERAGE_BINSimport cocotb
+import cocotb
 from test_rle_compressor_cocotb import *
 from collections import Counter
 import matplotlib.pyplot as plt
@@ -7,6 +7,7 @@ from multiprocessing import *
 import re
 import numpy as np
 import math
+import configparser, ast
 
 def match(patterns, seq):
     if((len(patterns) == 0) or (len(patterns[0]) == 0) or (len(seq) < len(patterns[0]))):
@@ -19,7 +20,7 @@ def match(patterns, seq):
     return 0
 
 class RLECompressorSingleStateEnv(gym.Env):
-    def __init__(self, num_action_params, coverage_bins, conn):
+    def __init__(self, num_action_params, coverage_bins, events_rewarded, conn):
         self.num_action_params = num_action_params
         self.coverage_bins = coverage_bins
         self.action_space = gym.spaces.Box(0., 1., (self.num_action_params, ))
@@ -28,6 +29,7 @@ class RLECompressorSingleStateEnv(gym.Env):
         self.total_coverage = Counter([])
         self.chosen_actions = []
         self.reward_list = []
+        self.events_rewarded = events_rewarded
         self.conn = conn
         for i in range(self.num_action_params):
             self.chosen_actions.append([])
@@ -54,7 +56,7 @@ class RLECompressorSingleStateEnv(gym.Env):
 
         self.total_coverage.update(Counter(coverage))
 
-        reward = get_reward_based_on_states_visited(binary_coverage)
+        reward = get_reward_based_on_states_visited(binary_coverage, self.events_rewarded)
         print('reward:', reward)
         self.reward_list.append(reward)
         return observation, reward, done, info
@@ -65,28 +67,32 @@ class RLECompressorSingleStateEnv(gym.Env):
         # reset device and testbench here too
         return state
 
-def get_reward_based_on_states_visited(binary_coverage):
+def get_reward_based_on_states_visited(binary_coverage, events_rewarded):
     reward = 0
-    events_rewarded = [1,3,4]
+    # events_rewarded = [1,3,4]
     for item in events_rewarded:
         reward += binary_coverage[item]
     return reward
 
 def rl_run(conn):
     # print("started RL process")
-
-    COVERAGE_BINS = 5
-    NUM_EPISODES = 1000
-    conn.send([str(NUM_EPISODES)])
-    NUM_SEQ_GEN_PARAMS = int(conn.recv()[0])
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    COVERAGE_BINS = config['main'].getint('num_events')
+    NUM_EPISODES = config['main'].getint('num_episodes')
+    EVENTS_REWARDED = ast.literal_eval(config['main']['events_rewarded'])
+    # print(EVENTS_REWARDED)
+    # conn.send([str(NUM_EPISODES)])
+    # NUM_SEQ_GEN_PARAMS = int(conn.recv()[0])
+    NUM_SEQ_GEN_PARAMS = len(ast.literal_eval(config['cocotb']['fsm_states']))
     NUM_DESIGN_ENV_PARAMS = 2
     NUM_ACTION_PARAMS = NUM_SEQ_GEN_PARAMS + NUM_DESIGN_ENV_PARAMS
 
     # suffix1 = '_reward=2,4_history=' + str(np.log2(NUM_ACTION_PARAMS))
-    suffix1 = '_reward=1,3,4,history=' + str(np.round(np.log2(NUM_SEQ_GEN_PARAMS)))
+    suffix1 = '_reward=1,3,4,history=' + str(int(np.log2(NUM_SEQ_GEN_PARAMS)))
     suffix = "_N=" + 'x100' + ",numEps=" + str(NUM_EPISODES) + ',word_width=' + '4' + ',count_width=' + 'var'
 
-    env = RLECompressorSingleStateEnv(NUM_ACTION_PARAMS, COVERAGE_BINS, conn)
+    env = RLECompressorSingleStateEnv(NUM_ACTION_PARAMS, COVERAGE_BINS, EVENTS_REWARDED, conn)
 
     from stable_baselines3 import DDPG, SAC
     from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
@@ -96,11 +102,15 @@ def rl_run(conn):
     action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
 
     # model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1, learning_starts=300, learning_rate=0.001, train_freq=(5, 'episode'))
-    model = SAC("MlpPolicy", env, action_noise=action_noise, verbose=1)
+    learning_starts = config['RL'].getint('learning_starts')
+    learning_rate = config['RL'].getfloat('learning_rate')
+    train_freq = ast.literal_eval(config['RL']['train_freq'])
+    model = SAC("MlpPolicy", env, action_noise=action_noise, verbose=1, learning_starts=learning_starts, learning_rate=learning_rate, train_freq=train_freq)
     suffix1 = '_' + type(model).__name__ + suffix1
     model.learn(total_timesteps=NUM_EPISODES)
 
-    model.save(suffix1[1:] + suffix + '.zip')
+    model_save_path = suffix1[1:] + suffix
+    model.save(model_save_path)
 
     print(env.total_binary_coverage)
     plt.vlines(list(range(COVERAGE_BINS)), 0, env.total_binary_coverage, color='C0', lw=4)
@@ -157,12 +167,15 @@ def monitor_signals(dut):
 
 @cocotb.test()
 def run_test(dut):
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+
     parent_conn, child_conn = Pipe()
     rl_process = Process(target=rl_run, args=(child_conn,))
     rl_process.start()
 
-    NUM_EPISODES = int(parent_conn.recv()[0])
-    action_list = []
+    # NUM_EPISODES = int(parent_conn.recv()[0])
+    NUM_EPISODES = config['main'].getint('num_episodes')
 
     global word_width
     global count_width
@@ -179,9 +192,8 @@ def run_test(dut):
 
     N = 400
 
-    FSM_states = ['.']
-    # write_to_file('./cocotb_output.txt', [len(FSM_states)])
-    parent_conn.send([len(FSM_states)])
+    FSM_states = ast.literal_eval(config['cocotb']['fsm_states'])
+    # parent_conn.send([len(FSM_states)])
 
     for i in range(NUM_EPISODES):
         print("-----------------------------------------------")
