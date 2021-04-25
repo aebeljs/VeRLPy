@@ -248,7 +248,7 @@ class DUTScoreboard(Scoreboard):
             print("got")
             print(got.value[2])
             # print(got.value[3])
-            exit(1)
+            # exit(1)
         #else:
         #   print("Values matched")
 

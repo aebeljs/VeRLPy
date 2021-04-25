@@ -1,4 +1,4 @@
-import cocotb
+COVERAGE_BINSimport cocotb
 from test_rle_compressor_cocotb import *
 from collections import Counter
 import matplotlib.pyplot as plt
@@ -19,12 +19,12 @@ def match(patterns, seq):
     return 0
 
 class RLECompressorSingleStateEnv(gym.Env):
-    def __init__(self, num_action_params, coverage_len, conn):
+    def __init__(self, num_action_params, coverage_bins, conn):
         self.num_action_params = num_action_params
-        self.coverage_len = coverage_len
+        self.coverage_bins = coverage_bins
         self.action_space = gym.spaces.Box(0., 1., (self.num_action_params, ))
         self.observation_space = gym.spaces.Discrete(1) # single state approach so this is enough
-        self.total_binary_coverage = [0] * coverage_len
+        self.total_binary_coverage = [0] * coverage_bins
         self.total_coverage = Counter([])
         self.chosen_actions = []
         self.reward_list = []
@@ -46,7 +46,7 @@ class RLECompressorSingleStateEnv(gym.Env):
         # print('gym', len(coverage))
         observation, done, info = 0, True, {}
 
-        binary_coverage = [0] * self.coverage_len
+        binary_coverage = [0] * self.coverage_bins
         for item in coverage:
             for k in range(len(item)):
                 binary_coverage[k] += int(item[k])
@@ -67,7 +67,7 @@ class RLECompressorSingleStateEnv(gym.Env):
 
 def get_reward_based_on_states_visited(binary_coverage):
     reward = 0
-    events_rewarded = [1, 3, 4]
+    events_rewarded = [1,3,4]
     for item in events_rewarded:
         reward += binary_coverage[item]
     return reward
@@ -75,8 +75,8 @@ def get_reward_based_on_states_visited(binary_coverage):
 def rl_run(conn):
     # print("started RL process")
 
-    COVERAGE_LEN = 5
-    NUM_EPISODES = 10
+    COVERAGE_BINS = 5
+    NUM_EPISODES = 1000
     conn.send([str(NUM_EPISODES)])
     NUM_SEQ_GEN_PARAMS = int(conn.recv()[0])
     NUM_DESIGN_ENV_PARAMS = 2
@@ -86,7 +86,7 @@ def rl_run(conn):
     suffix1 = '_reward=1,3,4,history=' + str(np.round(np.log2(NUM_SEQ_GEN_PARAMS)))
     suffix = "_N=" + 'x100' + ",numEps=" + str(NUM_EPISODES) + ',word_width=' + '4' + ',count_width=' + 'var'
 
-    env = RLECompressorSingleStateEnv(NUM_ACTION_PARAMS, COVERAGE_LEN, conn)
+    env = RLECompressorSingleStateEnv(NUM_ACTION_PARAMS, COVERAGE_BINS, conn)
 
     from stable_baselines3 import DDPG, SAC
     from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
@@ -95,15 +95,15 @@ def rl_run(conn):
     n_actions = env.action_space.shape[-1]
     action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
 
-    model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1, learning_starts=100, learning_rate=0.001, train_freq=(5, 'episode'))
-    # model = SAC("MlpPolicy", env, action_noise=action_noise, verbose=1)
+    # model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1, learning_starts=300, learning_rate=0.001, train_freq=(5, 'episode'))
+    model = SAC("MlpPolicy", env, action_noise=action_noise, verbose=1)
+    suffix1 = '_' + type(model).__name__ + suffix1
     model.learn(total_timesteps=NUM_EPISODES)
 
-    model.save('DDPG_compressor_num_action_params=' + str(env.num_action_params))
-    # model.save('SAC_compressor_num_action_params=' + str(env.num_action_params))
+    model.save(suffix1[1:] + suffix + '.zip')
 
     print(env.total_binary_coverage)
-    plt.vlines(list(range(COVERAGE_LEN)), 0, env.total_binary_coverage, color='C0', lw=4)
+    plt.vlines(list(range(COVERAGE_BINS)), 0, env.total_binary_coverage, color='C0', lw=4)
     plt.grid()
     plt.xticks(rotation = 90)
     plt.tight_layout()
@@ -151,7 +151,6 @@ def monitor_signals(dut):
             (int)(dut.rg_zero_counter.value == 64),
             (int)(dut.rg_counter.value == (2**count_width - 2)),
             (int)(dut.rg_next_count != 0),
-            # (int)((dut.rg_word_counter.value == 16) and (dut.rg_counter.value == (2**count_width - 2)))]
             (int)((dut.rg_zero_counter.value == 64) and (dut.rg_next_count != 0))]
         s = ''.join(map(str, s))
         cocotb_coverage.append(s)
