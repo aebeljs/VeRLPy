@@ -7,7 +7,7 @@ from multiprocessing import *
 import re
 import numpy as np
 import math
-import configparser, ast
+import configparser, ast, logging
 
 def match(patterns, seq):
     if((len(patterns) == 0) or (len(patterns[0]) == 0) or (len(seq) < len(patterns[0]))):
@@ -35,17 +35,17 @@ class RLECompressorSingleStateEnv(gym.Env):
             self.chosen_actions.append([])
 
     def step(self, action):
+        global episode
         print("Taking RL step")
         observation = 0 # always constant as it is single state
         generator_probab = []
         for i in range(self.num_action_params):
             generator_probab.append(action[i])
             self.chosen_actions[i].append(action[i])
-        # print(generator_probab)
+        logging.info('RL | Episode ' + str(episode) + ' | action | ' + str(generator_probab))
         self.conn.send(generator_probab)
-        # print('action write done----------------------')
         coverage = self.conn.recv()
-        # print('gym', len(coverage))
+        logging.info('RL | Episode ' + str(episode) + ' | coverage | ' + str(coverage))
         observation, done, info = 0, True, {}
 
         binary_coverage = [0] * self.coverage_bins
@@ -53,42 +53,48 @@ class RLECompressorSingleStateEnv(gym.Env):
             for k in range(len(item)):
                 binary_coverage[k] += int(item[k])
                 self.total_binary_coverage[k] += int(item[k])
+        logging.info('RL | Episode ' + str(episode) + ' | binary_coverage | ' + str(binary_coverage))
 
         self.total_coverage.update(Counter(coverage))
 
         reward = get_reward_based_on_states_visited(binary_coverage, self.events_rewarded)
+        logging.info('RL | Episode ' + str(episode) + ' | reward | ' + str(reward))
+        logging.info('RL | Episode ' + str(episode) + ' | observation | ' + str(observation))
+        logging.info('RL | Episode ' + str(episode) + ' | done | ' + str(done))
+        logging.info('RL | Episode ' + str(episode) + ' | info | ' + str(info))
         print('reward:', reward)
         self.reward_list.append(reward)
         return observation, reward, done, info
 
     def reset(self):
+        global episode
         state = 0
         print('reset called')
         # reset device and testbench here too
+        logging.info('RL | Episode ' + str(episode) + ' | reset called')
+        episode += 1
         return state
 
 def get_reward_based_on_states_visited(binary_coverage, events_rewarded):
     reward = 0
-    # events_rewarded = [1,3,4]
     for item in events_rewarded:
         reward += binary_coverage[item]
     return reward
 
 def rl_run(conn):
-    # print("started RL process")
     config = configparser.ConfigParser()
     config.read('config.ini')
     COVERAGE_BINS = config['main'].getint('num_events')
+    logging.info('CONFIG | num_events | ' + str(COVERAGE_BINS))
     NUM_EPISODES = config['main'].getint('num_episodes')
+    logging.info('CONFIG | num_episodes | ' + str(NUM_EPISODES))
     EVENTS_REWARDED = ast.literal_eval(config['main']['events_rewarded'])
-    # print(EVENTS_REWARDED)
-    # conn.send([str(NUM_EPISODES)])
-    # NUM_SEQ_GEN_PARAMS = int(conn.recv()[0])
+    logging.info('CONFIG | events_rewarded | ' + str(EVENTS_REWARDED))
     NUM_SEQ_GEN_PARAMS = len(ast.literal_eval(config['cocotb']['fsm_states']))
-    NUM_DESIGN_ENV_PARAMS = 2
+    logging.info('CONFIG | fsm_states | ' + str(NUM_SEQ_GEN_PARAMS))
+    NUM_DESIGN_ENV_PARAMS = len(ast.literal_eval(config['cocotb']['discrete_params']))
     NUM_ACTION_PARAMS = NUM_SEQ_GEN_PARAMS + NUM_DESIGN_ENV_PARAMS
 
-    # suffix1 = '_reward=2,4_history=' + str(np.log2(NUM_ACTION_PARAMS))
     suffix1 = '_reward=1,3,4,history=' + str(int(np.log2(NUM_SEQ_GEN_PARAMS)))
     suffix = "_N=" + 'x100' + ",numEps=" + str(NUM_EPISODES) + ',word_width=' + '4' + ',count_width=' + 'var'
 
@@ -103,8 +109,11 @@ def rl_run(conn):
 
     # model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1, learning_starts=300, learning_rate=0.001, train_freq=(5, 'episode'))
     learning_starts = config['RL'].getint('learning_starts')
+    logging.info('CONFIG | learning_starts | ' + str(learning_starts))
     learning_rate = config['RL'].getfloat('learning_rate')
+    logging.info('CONFIG | learning_rate | ' + str(learning_rate))
     train_freq = ast.literal_eval(config['RL']['train_freq'])
+    logging.info('CONFIG | train_freq | ' + str(train_freq))
     model = SAC("MlpPolicy", env, action_noise=action_noise, verbose=1, learning_starts=learning_starts, learning_rate=learning_rate, train_freq=train_freq)
     suffix1 = '_' + type(model).__name__ + suffix1
     model.learn(total_timesteps=NUM_EPISODES)
@@ -146,12 +155,22 @@ def rl_run(conn):
         plt.savefig('./hist_of_actions'+ '_param=' + str(i) + suffix1 + suffix + '.png', bbox_inches='tight')
         plt.close()
 
-    # print(" Done RL process ")
-
 
 cocotb_coverage = []
 count_width = 6
 word_width = 4
+episode = 0
+
+import logging
+# Remove all handlers associated with the root logger object.
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
+logging.basicConfig(filename='test.log',
+                            filemode='w',
+                            format='%(asctime)s | %(levelname)s | %(message)s',
+                            datefmt='%d/%m/%Y %I:%M:%S %p',
+                            level=logging.INFO)
+
 @cocotb.coroutine
 def monitor_signals(dut):
     global count_width
@@ -174,7 +193,6 @@ def run_test(dut):
     rl_process = Process(target=rl_run, args=(child_conn,))
     rl_process.start()
 
-    # NUM_EPISODES = int(parent_conn.recv()[0])
     NUM_EPISODES = config['main'].getint('num_episodes')
 
     global word_width
@@ -193,7 +211,11 @@ def run_test(dut):
     N = 400
 
     FSM_states = ast.literal_eval(config['cocotb']['fsm_states'])
-    # parent_conn.send([len(FSM_states)])
+    discrete_params = ast.literal_eval(config['cocotb']['discrete_params'])
+    num_discrete_params = len(discrete_params)
+    discrete_param_values = []
+    for param in discrete_params:
+        discrete_param_values.append(ast.literal_eval(config['discrete'][param]))
 
     for i in range(NUM_EPISODES):
         print("-----------------------------------------------")
@@ -205,27 +227,25 @@ def run_test(dut):
         # get action
         print('waiting for RL action', i)
         Z = parent_conn.recv()
-        # Z = ['0.512462424523714', '0.9434345122764985', '1.0']
         print("action: ", Z)
         Z = [float(i) for i in Z]
+        logging.info('cocotb | Episode ' + str(i + 1) + ' | action | ' + str(Z))
 
+        discrete_actions = []
+        for j in range(num_discrete_params):
+            x = math.ceil(Z[j - num_discrete_params] * len(discrete_param_values[j]))
+            if((x == 0) and (len(discrete_param_values[j]) != 0)):
+                x = 1
+            discrete_actions.append(discrete_param_values[j][x - 1])
 
-        ##############################################
-        # comment this block if design config params are not in action space
-        count_width = math.ceil(Z[-2] * 8)
-        if(count_width==0):
-            count_width = 1
+        count_width = discrete_actions[0]
         print('count width', count_width)
         tb.count_width = count_width
 
-        N = math.ceil(Z[-1] * 10) # total number of elements in activation map
-        if(N == 0):
-            N += 1
-        N *= 100
+        N = discrete_actions[1]
         print('N =', N)
 
-        Z = Z[:-2]
-        ##############################################
+        Z = Z[:-num_discrete_params]
 
         assert len(Z) == len(FSM_states)
 
@@ -298,7 +318,7 @@ def run_test(dut):
         yield RisingEdge(dut.CLK)
 
         # write to a file the coverage, reward, etc.
-        # print('cocotb', len(cocotb_coverage))
+        logging.info('cocotb | Episode ' + str(i + 1) + ' | history | ' + history)
         parent_conn.send(cocotb_coverage)
 
     rl_process.join()
