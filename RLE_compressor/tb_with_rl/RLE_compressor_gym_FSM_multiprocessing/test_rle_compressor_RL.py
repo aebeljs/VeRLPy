@@ -119,41 +119,50 @@ def rl_run(conn):
     model.learn(total_timesteps=NUM_EPISODES)
 
     model_save_path = suffix1[1:] + suffix
-    model.save(model_save_path)
+    # model.save(model_save_path)
+    model.save('model')
+
+    logging.info('RL | result | total_binary_coverage | ' + str(env.total_binary_coverage))
 
     print(env.total_binary_coverage)
-    plt.vlines(list(range(COVERAGE_BINS)), 0, env.total_binary_coverage, color='C0', lw=4)
-    plt.grid()
-    plt.xticks(rotation = 90)
-    plt.tight_layout()
-    plt.title("Histogram of individual event coverage\n")
-    plt.savefig('./hist_of_binary_coverage' + suffix1 + suffix + '.png', bbox_inches='tight')
-    plt.close()
+    # plt.vlines(list(range(COVERAGE_BINS)), 0, env.total_binary_coverage, color='C0', lw=4)
+    # plt.grid()
+    # plt.xticks(rotation = 90)
+    # plt.tight_layout()
+    # plt.title("Histogram of individual event coverage\n")
+    # plt.savefig('./hist_of_binary_coverage' + suffix1 + suffix + '.png', bbox_inches='tight')
+    # plt.close()
 
     env.total_coverage = sorted(env.total_coverage.items())
     labels = [x[0] for x in env.total_coverage]
     counts = [x[1] for x in env.total_coverage]
-    plt.vlines(labels, 0, counts, color='C0', lw=4)
-    plt.grid()
-    plt.xticks(rotation = 90)
-    plt.tight_layout()
-    plt.title("Histogram of combination event coverage\n")
-    plt.savefig('./hist_of_coverage' + suffix1 + suffix + '.png', bbox_inches='tight')
-    plt.close()
+    logging.info('RL | result | total_coverage | ' + str(labels) + ' | ' + str(counts))
 
-    plt.plot(env.reward_list)
-    plt.grid()
-    plt.tight_layout()
-    plt.title("Reward vs episode\n")
-    plt.savefig('./reward_plot' + suffix1 + suffix + '.png', bbox_inches='tight')
-    plt.close()
+    # plt.vlines(labels, 0, counts, color='C0', lw=4)
+    # plt.grid()
+    # plt.xticks(rotation = 90)
+    # plt.tight_layout()
+    # plt.title("Histogram of combination event coverage\n")
+    # plt.savefig('./hist_of_coverage' + suffix1 + suffix + '.png', bbox_inches='tight')
+    # plt.close()
+
+    logging.info('RL | result | reward_plot | ' + str(env.reward_list))
+
+    # plt.plot(env.reward_list)
+    # plt.grid()
+    # plt.tight_layout()
+    # plt.title("Reward vs episode\n")
+    # plt.savefig('./reward_plot' + suffix1 + suffix + '.png', bbox_inches='tight')
+    # plt.close()
 
     for i in range(NUM_ACTION_PARAMS):
-        plt.hist(env.chosen_actions[i], bins=100)
-        plt.tight_layout()
-        plt.title('Histogram of action param ' + str(i) +  ' in the activation map\n')
-        plt.savefig('./hist_of_actions'+ '_param=' + str(i) + suffix1 + suffix + '.png', bbox_inches='tight')
-        plt.close()
+        logging.info('RL | result | action_hist_' + str(i + 1) + ' | ' + str(env.chosen_actions[i]))
+
+        # plt.hist(env.chosen_actions[i], bins=100)
+        # plt.tight_layout()
+        # plt.title('Histogram of action param ' + str(i) +  ' in the activation map\n')
+        # plt.savefig('./hist_of_actions'+ '_param=' + str(i) + suffix1 + suffix + '.png', bbox_inches='tight')
+        # plt.close()
 
 
 cocotb_coverage = []
@@ -228,7 +237,7 @@ def run_test(dut):
         print('waiting for RL action', i)
         Z = parent_conn.recv()
         print("action: ", Z)
-        Z = [float(i) for i in Z]
+        # Z = [float(i) for i in Z]
         logging.info('cocotb | Episode ' + str(i + 1) + ' | action | ' + str(Z))
 
         discrete_actions = []
