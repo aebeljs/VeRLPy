@@ -3,11 +3,16 @@ from test_rle_compressor_cocotb import *
 from RL_helper import *
 from multiprocessing import *
 import numpy as np
-import configparser, ast, logging, math, time
+import configparser
+import ast
+import logging
+import math
+import time
 
 cocotb_coverage = []
 count_width = 6
 word_width = 4
+
 
 @cocotb.coroutine
 def monitor_signals(dut):
@@ -15,12 +20,13 @@ def monitor_signals(dut):
     while True:
         yield RisingEdge(dut.CLK)
         s = [(int)(dut.rg_word_counter.value == 16),
-            (int)(dut.rg_zero_counter.value == 64),
-            (int)(dut.rg_counter.value == (2**count_width - 2)),
-            (int)(dut.rg_next_count != 0),
-            (int)((dut.rg_zero_counter.value == 64) and (dut.rg_next_count != 0))]
+             (int)(dut.rg_zero_counter.value == 64),
+             (int)(dut.rg_counter.value == (2**count_width - 2)),
+             (int)(dut.rg_next_count != 0),
+             (int)((dut.rg_zero_counter.value == 64) and (dut.rg_next_count != 0))]
         s = ''.join(map(str, s))
         cocotb_coverage.append(s)
+
 
 @cocotb.test()
 def run_test(dut):
@@ -33,13 +39,13 @@ def run_test(dut):
     for handler in logger.root.handlers[:]:
         logger.root.removeHandler(handler)
     logging.basicConfig(filename=timestamp + '.log',
-                                filemode='w',
-                                format='%(asctime)s | %(levelname)s | %(message)s',
-                                datefmt='%d/%m/%Y %I:%M:%S %p',
-                                level=logging.INFO)
+                        filemode='w',
+                        format='%(asctime)s | %(levelname)s | %(message)s',
+                        datefmt='%d/%m/%Y %I:%M:%S %p',
+                        level=logging.INFO)
 
     parent_conn, child_conn = Pipe()
-    rl_process = Process(target=rl_run, args=(child_conn, logger, timestamp,))
+    rl_process = Process(target=RL_run, args=(child_conn, logger, timestamp,))
     rl_process.start()
 
     NUM_EPISODES = config['main'].getint('num_episodes')
@@ -47,11 +53,11 @@ def run_test(dut):
     global word_width
     global count_width
 
-    word_width = 4 #Can be randomised to pick only from the set 1, 2, 4, 8
-    count_width = 6 # count_width = random.randint(1,8)
+    word_width = 4      # Can be randomised to pick only from the set 1, 2, 4, 8
+    count_width = 6     # count_width = random.randint(1,8)
 
     cocotb.fork(clock_gen(dut.CLK))
-    cocotb.fork(monitor_signals(dut)) # tracks states covered
+    cocotb.fork(monitor_signals(dut))   # tracks states covered
 
     tb = TestBench(dut)
     tb.word_width = word_width
@@ -102,7 +108,7 @@ def run_test(dut):
         yield Timer(2)
         dut.RST_N <= 1
 
-        start_comp = start_compression(tb,word_width,count_width)
+        start_comp = start_compression(tb, word_width, count_width)
         for t in start_comp:
             yield tb.input_drv.send(t)
         yield RisingEdge(dut.CLK)
@@ -111,7 +117,7 @@ def run_test(dut):
         # take action
         n = 0
         while(n < N):
-            curr_state = match(FSM_states, history)
+            curr_state = get_next_state_of_FSM(history, FSM_states)
             if(dut.RDY_ma_get_input == 1):
                 sample = random.random()
                 if(sample < Z[curr_state]):
@@ -122,15 +128,15 @@ def run_test(dut):
                     history += '1'
                 for t in input_gen:
                     yield tb.input_drv.send(t)
-                n=n+1
+                n = n + 1
                 yield RisingEdge(dut.CLK)
 
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb,1)
+                output_enable = enable_compression_output(tb, 1)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
 
-                output_enable = enable_compression_output(tb,0)
+                output_enable = enable_compression_output(tb, 0)
                 for t in output_enable:
                     yield tb.input_drv.send(t)
 
@@ -138,25 +144,25 @@ def run_test(dut):
         for t in end_comp:
             yield tb.input_drv.send(t)
 
-        output_enable = enable_compression_output(tb,1)
+        output_enable = enable_compression_output(tb, 1)
         for t in output_enable:
             yield tb.input_drv.send(t)
 
         for t in range(2):
             yield RisingEdge(dut.CLK)
 
-        output_enable = enable_compression_output(tb,0)
+        output_enable = enable_compression_output(tb, 0)
         for t in output_enable:
             yield tb.input_drv.send(t)
 
-        output_enable = enable_compression_output(tb,1)
+        output_enable = enable_compression_output(tb, 1)
         for t in output_enable:
             yield tb.input_drv.send(t)
 
         for t in range(2):
             yield RisingEdge(dut.CLK)
 
-        output_enable = enable_compression_output(tb,0)
+        output_enable = enable_compression_output(tb, 0)
         for t in output_enable:
             yield tb.input_drv.send(t)
 
