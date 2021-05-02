@@ -30,11 +30,12 @@ def monitor_signals(dut):
 
 @cocotb.test()
 def run_test(dut):
-    timestamp = str(int(time.time()))
+    timestamp = str(int(time.time()))   # timestamp to tag the log file and model
 
     config = configparser.ConfigParser()
     config.read('config.ini')
 
+    # set up the logger
     logger = logging.getLogger(__name__)
     for handler in logger.root.handlers[:]:
         logger.root.removeHandler(handler)
@@ -44,46 +45,40 @@ def run_test(dut):
                         datefmt='%d/%m/%Y %I:%M:%S %p',
                         level=logging.INFO)
 
+    # set up the Pipe and start the RL process
     parent_conn, child_conn = Pipe()
     rl_process = Process(target=RL_run, args=(child_conn, logger, timestamp,))
     rl_process.start()
 
+    # read parameters from config file
     NUM_EPISODES = config['main'].getint('num_episodes')
-
-    global word_width
-    global count_width
-
-    word_width = 4      # Can be randomised to pick only from the set 1, 2, 4, 8
-    count_width = 6     # count_width = random.randint(1,8)
-
-    cocotb.fork(clock_gen(dut.CLK))
-    cocotb.fork(monitor_signals(dut))   # tracks states covered
-
-    tb = TestBench(dut)
-    tb.word_width = word_width
-    tb.count_width = count_width
-
-    N = 400
-
     FSM_states = ast.literal_eval(config['cocotb']['fsm_states'])
     discrete_params = ast.literal_eval(config['cocotb']['discrete_params'])
     num_discrete_params = len(discrete_params)
+
+    # get the valid value set for each discrete parameter
     discrete_param_values = []
     for param in discrete_params:
         discrete_param_values.append(ast.literal_eval(config['discrete'][param]))
 
+    #######################----user---------##################################
+    cocotb.fork(clock_gen(dut.CLK))
+    cocotb.fork(monitor_signals(dut))   # tracks states covered
+
+    tb = TestBench(dut)
+
+    global word_width
+    global count_width
+    word_width = 4      # Can be randomised to pick only from the set 1, 2, 4, 8
+    count_width = 6     # count_width = random.randint(1,8)
+
+    tb.word_width = word_width
+    tb.count_width = count_width
+    #######################----user---------#################################
+
     for i in range(NUM_EPISODES):
-        print("-----------------------------------------------")
-        print("Epsiode number: ", i)
-
-        cocotb_coverage.clear()
-        history = ''
-
-        # get action
-        print('waiting for RL action', i)
-        Z = parent_conn.recv()
+        Z = parent_conn.recv()  # receive the action from the RL agent
         print("action: ", Z)
-        logger.info('cocotb | Episode ' + str(i + 1) + ' | action | ' + str(Z))
 
         discrete_actions = []
         for j in range(num_discrete_params):
@@ -92,16 +87,19 @@ def run_test(dut):
                 x = 1
             discrete_actions.append(discrete_param_values[j][x - 1])
 
+        Z = Z[:-num_discrete_params]
+        assert len(Z) == len(FSM_states)
+
+        #######################----user---------#################################
+        cocotb_coverage.clear()
+        history = ''    # to store the binary sequence for FSM based sequence generation
+
         count_width = discrete_actions[0]
         print('count width', count_width)
         tb.count_width = count_width
 
         N = discrete_actions[1]
         print('N =', N)
-
-        Z = Z[:-num_discrete_params]
-
-        assert len(Z) == len(FSM_states)
 
         # reset the DUT
         dut.RST_N <= 0
@@ -170,10 +168,14 @@ def run_test(dut):
             yield RisingEdge(dut.CLK)
 
         yield RisingEdge(dut.CLK)
-
         # write to a file the coverage, reward, etc.
         logger.info('cocotb | Episode ' + str(i + 1) + ' | history | ' + history)
-        parent_conn.send(cocotb_coverage)
+        #######################----user---------#################################
 
-    rl_process.join()
+        parent_conn.send(cocotb_coverage)   # send the coverage to the RL agent
+
+    #######################----user---------#################################
     tb.stop()
+    #######################----user---------#################################
+    
+    rl_process.join()   #RL process is completed
