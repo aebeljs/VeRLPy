@@ -9,14 +9,9 @@ import logging
 import math
 import time
 
-cocotb_coverage = []
-count_width = 6
-word_width = 4
-
 
 @cocotb.coroutine
-def monitor_signals(dut):
-    global count_width
+def monitor_signals(dut, cocotb_coverage, count_width):
     while True:
         yield RisingEdge(dut.CLK)
         s = [(int)(dut.rg_word_counter.value == 16),
@@ -63,17 +58,10 @@ def run_test(dut):
 
     #######################----user---------##################################
     cocotb.fork(clock_gen(dut.CLK))
-    cocotb.fork(monitor_signals(dut))   # tracks states covered
 
     tb = TestBench(dut)
-
-    global word_width
-    global count_width
     word_width = 4      # Can be randomised to pick only from the set 1, 2, 4, 8
-    count_width = 6     # count_width = random.randint(1,8)
-
     tb.word_width = word_width
-    tb.count_width = count_width
     #######################----user---------#################################
 
     for i in range(NUM_EPISODES):
@@ -91,15 +79,16 @@ def run_test(dut):
         assert len(Z) == len(FSM_states)
 
         #######################----user---------#################################
-        cocotb_coverage.clear()
-        history = ''    # to store the binary sequence for FSM based sequence generation
-
         count_width = discrete_actions[0]
         print('count width', count_width)
         tb.count_width = count_width
 
         N = discrete_actions[1]
         print('N =', N)
+
+        cocotb_coverage = []
+        m_sig = cocotb.fork(monitor_signals(dut, cocotb_coverage, count_width))   # tracks states covered
+        history = ''    # to store the binary sequence for FSM based sequence generation
 
         # reset the DUT
         dut.RST_N <= 0
@@ -168,6 +157,8 @@ def run_test(dut):
             yield RisingEdge(dut.CLK)
 
         yield RisingEdge(dut.CLK)
+        
+        m_sig.kill()
         # write to a file the coverage, reward, etc.
         logger.info('cocotb | Episode ' + str(i + 1) + ' | history | ' + history)
         #######################----user---------#################################
@@ -177,5 +168,5 @@ def run_test(dut):
     #######################----user---------#################################
     tb.stop()
     #######################----user---------#################################
-    
+
     rl_process.join()   #RL process is completed
