@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
 import cocotb
-from cocotb.triggers import Timer, RisingEdge
 from test_rle_compressor_cocotb import *
 from RL_helper import *
 from multiprocessing import *
