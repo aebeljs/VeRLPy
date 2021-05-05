@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 import cocotb
+from cocotb.triggers import Timer, RisingEdge
 from test_rle_compressor_cocotb import *
 from RL_helper import *
 from multiprocessing import *
@@ -50,7 +51,7 @@ class CocotbEnv(ABC):
     def setup_experiment(self):
         pass
 
-    @abstractmethod
+    @cocotb.coroutine
     def take_step(self):
         pass
 
@@ -58,6 +59,7 @@ class CocotbEnv(ABC):
     def finish_experiment(self):
         pass
 
+    @cocotb.coroutine
     def run(self):
         print('test', self.NUM_EPISODES)
         self.setup_experiment()
@@ -76,8 +78,11 @@ class CocotbEnv(ABC):
 
             self.continuous_actions = self.continuous_actions[:-num_discrete_params]
             assert len(self.continuous_actions) == len(self.FSM_states)
+
+            self.logger.info('cocotb | Episode ' + str(i + 1))
             #######################----user---------#################################
-            self.take_step()
+            step_lv = cocotb.fork(self.take_step())
+            yield step_lv.join()
             #######################----user---------#################################
             self.parent_conn.send(self.cocotb_coverage)   # send the coverage to the RL agent
 

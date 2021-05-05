@@ -19,6 +19,7 @@ class CompressorCocotbEnv(CocotbEnv):
     def setup_experiment(self):
         cocotb.fork(clock_gen(self.dut.CLK))
 
+    @cocotb.coroutine
     def take_step(self):
         count_width = self.discrete_actions[0]
         print('count width', count_width)
@@ -51,7 +52,7 @@ class CompressorCocotbEnv(CocotbEnv):
             curr_state = get_next_state_of_FSM(history, self.FSM_states)
             if(self.dut.RDY_ma_get_input == 1):
                 sample = random.random()
-                if(sample < Z[curr_state]):
+                if(sample < self.continuous_actions[curr_state]):
                     input_gen = zero_input_gen(self.tb)
                     history += '0'
                 else:
@@ -95,7 +96,7 @@ class CompressorCocotbEnv(CocotbEnv):
 
         output_enable = enable_compression_output(self.tb, 0)
         for t in output_enable:
-            yield tb.input_drv.send(t)
+            yield self.tb.input_drv.send(t)
 
         for n in range(20):
             yield RisingEdge(self.dut.CLK)
@@ -104,7 +105,7 @@ class CompressorCocotbEnv(CocotbEnv):
 
         m_sig.kill()
         # write to a file the coverage, reward, etc.
-        self.logger.info('cocotb | Episode ' + str(i + 1) + ' | history | ' + history)
+        self.logger.info('cocotb | history | ' + history)
 
 
     def finish_experiment(self):
@@ -126,4 +127,4 @@ def monitor_signals(dut, cocotb_coverage, count_width):
 @cocotb.test()
 def run_test(dut):
     cocotb_env = CompressorCocotbEnv(dut)
-    cocotb_env.run()
+    yield cocotb_env.run()
