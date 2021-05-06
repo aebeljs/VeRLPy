@@ -1,5 +1,6 @@
 import cocotb
-from cocotb_env import *
+from cocotb_helper import *
+from test_rle_compressor_helper import *
 from RL_helper import *
 from multiprocessing import *
 import numpy as np
@@ -10,7 +11,6 @@ import math
 import time
 
 class CompressorCocotbEnv(CocotbEnv):
-    import cocotb
     def __init__(self, dut):
         super().__init__()
         self.dut = dut
@@ -20,7 +20,7 @@ class CompressorCocotbEnv(CocotbEnv):
         cocotb.fork(clock_gen(self.dut.CLK))
 
     @cocotb.coroutine
-    def take_step(self):
+    def verify(self):
         count_width = self.discrete_actions[0]
         print('count width', count_width)
         self.tb.count_width = count_width
@@ -49,7 +49,7 @@ class CompressorCocotbEnv(CocotbEnv):
         # take action
         n = 0
         while(n < N):
-            curr_state = get_next_state_of_FSM(history, self.FSM_states)
+            curr_state = get_next_state_of_FSM(history, self.FSM_STATES)
             if(self.dut.RDY_ma_get_input == 1):
                 sample = random.random()
                 if(sample < self.continuous_actions[curr_state]):
@@ -107,7 +107,6 @@ class CompressorCocotbEnv(CocotbEnv):
         # write to a file the coverage, reward, etc.
         self.logger.info('cocotb | history | ' + history)
 
-
     def finish_experiment(self):
         self.tb.stop()
 
@@ -123,6 +122,14 @@ def monitor_signals(dut, cocotb_coverage, count_width):
              (int)((dut.rg_zero_counter.value == 64) and (dut.rg_next_count != 0))]
         s = ''.join(map(str, s))
         cocotb_coverage.append(s)
+
+@cocotb.coroutine
+def clock_gen(signal):
+    while True:
+        signal <= 0
+        yield Timer(1)
+        signal <= 1
+        yield Timer(1)
 
 @cocotb.test()
 def run_test(dut):

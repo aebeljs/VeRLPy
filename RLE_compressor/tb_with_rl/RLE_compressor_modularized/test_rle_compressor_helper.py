@@ -669,11 +669,3 @@ def enable_end_compression(tb):
                            EN_ma_get_input,
                            EN_ma_end_compression,
                            EN_mav_send_compressed_value)
-
-@cocotb.coroutine
-def clock_gen(signal):
-    while True:
-        signal <= 0
-        yield Timer(1)
-        signal <= 1
-        yield Timer(1)
