@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import cocotb
+from cocotb.triggers import Timer
 from RL_helper import *
 from multiprocessing import *
 import numpy as np
@@ -52,6 +53,37 @@ class CocotbEnv(ABC):
         self.discrete_actions = []  # list which will have the discrete actions in each episode
         self.continuous_actions = []    # list which will have the continuous actions in each episode
 
+    @cocotb.coroutine
+    def clock_gen(self,clk_signal,clk_delay):
+        while True:
+            clk_signal <= 0
+            yield Timer(clk_delay)
+            clk_signal <= 1
+            yield Timer(clk_delay)
+
+    @cocotb.coroutine
+    def assert_reset(self,rst_signal,rst_val,rstn_val,rst_delay):
+        rst_signal <= rst_val
+        yield Timer(rst_delay)
+        rst_signal <= rstn_val
+        
+    '''
+    @cocotb.coroutine
+    @abstractmethod
+    def configure_dut(self):
+        pass
+
+    @cocotb.coroutine
+    @abstractmethod
+    def drive_input(self):
+        pass
+
+    @cocotb.coroutine
+    @abstractmethod
+    def terminate_dut_drive(self):
+        pass
+    '''
+
     def setup_experiment(self):
         '''
         This function will be called before the verification loop is started in
@@ -63,10 +95,27 @@ class CocotbEnv(ABC):
 
     @cocotb.coroutine
     @abstractmethod
-    def verify(self):
+    def verify_configure(self):
         '''
         This coroutine will be called in each episode of the core verification
         loop once the actions for that episode are obtained from the RL process.
+        See the loop in run(self) below for the exact call location. This method
+        must be overridden in the subclass with the core verification logic for
+        hardware design to be verified.
+        
+        The list self.cocotb_coverage must be populated with the episode's
+        coverage in the implementation of this function so that it can be sent
+        to the RL agent for reward computation.
+        '''
+        pass
+
+    @cocotb.coroutine
+    @abstractmethod
+    def verify_dut_input_drive(self):
+        '''
+        This coroutine will be called in each episode of the core verification
+        loop once the actions for that episode are obtained from the RL process
+        and verify_configure() method has been called.
         See the loop in run(self) below for the exact call location. This method
         must be overridden in the subclass with the core verification logic for
         hardware design to be verified.
@@ -87,7 +136,7 @@ class CocotbEnv(ABC):
         pass
 
     @cocotb.coroutine
-    def run(self):
+    def run(self,single_state=True): ##TODO : Add fixed number of inputs in multi state or it will be suggested by RL
         '''
         This coroutine contains the control flow in the cocotb environment. Do
         not override this in the subclass. Instead, modify the contents of this
@@ -118,11 +167,17 @@ class CocotbEnv(ABC):
             assert len(self.continuous_actions) == len(self.FSM_STATES)
 
             # execute the verification logic of the design
-            verif_coroutine = cocotb.fork(self.verify())
-            yield verif_coroutine.join()
+            verif_config_coroutine = cocotb.fork(self.verify_configure())
+            yield verif_config_coroutine.join()
+
+            if(single_state):
+                verif_dut_drive_coroutine = cocotb.fork(self.verify_dut_input_drive())
+                yield verif_dut_drive_coroutine.join()
+                self.parent_conn.send(self.cocotb_coverage)
+            else:
+                pass
 
             # send the coverage to the RL agent for computing reward
-            self.parent_conn.send(self.cocotb_coverage)
 
         # end the RL process
         self.rl_process.join()

@@ -15,12 +15,13 @@ class CompressorCocotbEnv(CocotbEnv):
         super().__init__()
         self.dut = dut
         self.tb = TestBench(dut)
+        self.fmap_length = 0
 
     def setup_experiment(self):
-        cocotb.fork(clock_gen(self.dut.CLK))
+        cocotb.fork(self.clock_gen(self.dut.CLK,1))
 
     @cocotb.coroutine
-    def verify(self):
+    def verify_configure(self):
         count_width = self.discrete_actions[0]
         print('count width', count_width)
         self.tb.count_width = count_width
@@ -28,75 +29,57 @@ class CompressorCocotbEnv(CocotbEnv):
         word_width = 4
         self.tb.word_width = word_width
 
-        N = self.discrete_actions[1]
-        print('N =', N)
-
-        self.cocotb_coverage.clear()
-        m_sig = cocotb.fork(monitor_signals(self.dut, self.cocotb_coverage, count_width))   # tracks states covered
-        history = ''    # to store the binary sequence for FSM based sequence generation
+        self.fmap_length = self.discrete_actions[1]
+        print('N =', self.fmap_length)
 
         # reset the DUT
-        self.dut.RST_N <= 0
-        yield Timer(2)
-        self.dut.RST_N <= 1
+        yield self.assert_reset(self.dut.RST_N,0,1,2)
 
-        start_comp = start_compression(self.tb, word_width, count_width)
-        for t in start_comp:
-            yield self.tb.input_drv.send(t)
-        yield RisingEdge(self.dut.CLK)
+        yield self.tb.input_drv.send(InputTransaction(self.tb, word_width, count_width,0,1,0,0,0))
+        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
         yield RisingEdge(self.dut.CLK)
 
-        # take action
+    
+    @cocotb.coroutine
+    def verify_dut_input_drive(self):
+        self.cocotb_coverage.clear()
+        m_sig = cocotb.fork(monitor_signals(self.dut, self.cocotb_coverage, self.tb.count_width))   # tracks states covered
+        history = ''    # to store the binary sequence for FSM based sequence generation
+
         n = 0
+        N = self.fmap_length
         while(n < N):
             curr_state = get_next_state_of_FSM(history, self.FSM_STATES)
             if(self.dut.RDY_ma_get_input == 1):
                 sample = random.random()
                 if(sample < self.continuous_actions[curr_state]):
-                    input_gen = zero_input_gen(self.tb)
+                    dut_input = 0
                     history += '0'
                 else:
-                    input_gen = random_input_gen(self.tb)
+                    dut_input = random.randint(1,0xFFFF)
                     history += '1'
-                for t in input_gen:
-                    yield self.tb.input_drv.send(t)
+                yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,dut_input,0,1,0,0))
+                yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
                 n = n + 1
                 yield RisingEdge(self.dut.CLK)
 
             elif(self.dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(self.tb, 1)
-                for t in output_enable:
-                    yield self.tb.input_drv.send(t)
+                yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,1)) 
+                yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
 
-                output_enable = enable_compression_output(self.tb, 0)
-                for t in output_enable:
-                    yield self.tb.input_drv.send(t)
 
-        end_comp = enable_end_compression(self.tb)
-        for t in end_comp:
-            yield self.tb.input_drv.send(t)
+        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,1,0)) 
+        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
 
-        output_enable = enable_compression_output(self.tb, 1)
-        for t in output_enable:
-            yield self.tb.input_drv.send(t)
-
+        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,1)) 
         for t in range(2):
             yield RisingEdge(self.dut.CLK)
+        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0)) 
 
-        output_enable = enable_compression_output(self.tb, 0)
-        for t in output_enable:
-            yield self.tb.input_drv.send(t)
-
-        output_enable = enable_compression_output(self.tb, 1)
-        for t in output_enable:
-            yield self.tb.input_drv.send(t)
-
+        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,1)) 
         for t in range(2):
             yield RisingEdge(self.dut.CLK)
-
-        output_enable = enable_compression_output(self.tb, 0)
-        for t in output_enable:
-            yield self.tb.input_drv.send(t)
+        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
 
         for n in range(20):
             yield RisingEdge(self.dut.CLK)
