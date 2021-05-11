@@ -15,10 +15,7 @@ class CompressorCocotbEnv(CocotbEnv):
         super().__init__()
         self.dut = dut
         self.tb = TestBench(dut)
-        self.fmap_length = 0
-
-    def setup_experiment(self):
-        cocotb.fork(self.clock_gen(self.dut.CLK,1))
+        self.history = ''
 
     @cocotb.coroutine
     def verify_configure(self):
@@ -29,8 +26,8 @@ class CompressorCocotbEnv(CocotbEnv):
         word_width = 4
         self.tb.word_width = word_width
 
-        self.fmap_length = self.discrete_actions[1]
-        print('N =', self.fmap_length)
+        self.num_inputs = self.discrete_actions[1]
+        print('N =', self.num_inputs)
 
         # reset the DUT
         yield self.assert_reset(self.dut.RST_N,0,1,2)
@@ -39,35 +36,37 @@ class CompressorCocotbEnv(CocotbEnv):
         yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
         yield RisingEdge(self.dut.CLK)
 
+    @cocotb.coroutine
+    def setup_rl_run(self):
+
+        cocotb.fork(self.clock_gen(self.dut.CLK,1))
+
+        self.cocotb_coverage.clear()
+        m_sig = cocotb.fork(monitor_signals(self.dut, self.cocotb_coverage, self.tb.count_width))   # tracks states covered
+        self.history = ''    # to store the binary sequence for FSM based sequence generation
+        yield Timer(1)
     
     @cocotb.coroutine
     def verify_dut_input_drive(self):
-        self.cocotb_coverage.clear()
-        m_sig = cocotb.fork(monitor_signals(self.dut, self.cocotb_coverage, self.tb.count_width))   # tracks states covered
-        history = ''    # to store the binary sequence for FSM based sequence generation
+        curr_state = get_next_state_of_FSM(self.history, self.FSM_STATES)
+        if(self.dut.RDY_ma_get_input == 1):
+            sample = random.random()
+            if(sample < self.continuous_actions[curr_state]):
+                dut_input = 0
+                self.history += '0'
+            else:
+                dut_input = random.randint(1,0xFFFF)
+                self.history += '1'
+            yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,dut_input,0,1,0,0))
+            yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
+            yield RisingEdge(self.dut.CLK)
+            self.drive_input_iter = self.drive_input_iter + 1
+        elif(self.dut.RDY_mav_send_compressed_value == 1):
+            yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,1)) 
+            yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
 
-        n = 0
-        N = self.fmap_length
-        while(n < N):
-            curr_state = get_next_state_of_FSM(history, self.FSM_STATES)
-            if(self.dut.RDY_ma_get_input == 1):
-                sample = random.random()
-                if(sample < self.continuous_actions[curr_state]):
-                    dut_input = 0
-                    history += '0'
-                else:
-                    dut_input = random.randint(1,0xFFFF)
-                    history += '1'
-                yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,dut_input,0,1,0,0))
-                yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
-                n = n + 1
-                yield RisingEdge(self.dut.CLK)
-
-            elif(self.dut.RDY_mav_send_compressed_value == 1):
-                yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,1)) 
-                yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
-
-
+    @cocotb.coroutine
+    def terminate_dut_drive(self):
         yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,1,0)) 
         yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
 
@@ -84,11 +83,7 @@ class CompressorCocotbEnv(CocotbEnv):
         for n in range(20):
             yield RisingEdge(self.dut.CLK)
 
-        yield RisingEdge(self.dut.CLK)
-
-        m_sig.kill()
-        # write to a file the coverage, reward, etc.
-        self.logger.info('cocotb | history | ' + history)
+        self.logger.info('cocotb | history | ' + self.history)
 
     def finish_experiment(self):
         self.tb.stop()
@@ -105,14 +100,6 @@ def monitor_signals(dut, cocotb_coverage, count_width):
              (int)((dut.rg_zero_counter.value == 64) and (dut.rg_next_count != 0))]
         s = ''.join(map(str, s))
         cocotb_coverage.append(s)
-
-@cocotb.coroutine
-def clock_gen(signal):
-    while True:
-        signal <= 0
-        yield Timer(1)
-        signal <= 1
-        yield Timer(1)
 
 @cocotb.test()
 def run_test(dut):

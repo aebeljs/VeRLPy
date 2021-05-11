@@ -49,6 +49,9 @@ class CocotbEnv(ABC):
         for param in discrete_params:
             self.DISCRETE_PARAM_VALUES.append(ast.literal_eval(self.config['discrete'][param]))
 
+        self.num_inputs = 1
+        self.drive_input_iter = 0
+
         self.cocotb_coverage = []   # list to be populated with each episode's coverage
         self.discrete_actions = []  # list which will have the discrete actions in each episode
         self.continuous_actions = []    # list which will have the continuous actions in each episode
@@ -67,30 +70,9 @@ class CocotbEnv(ABC):
         yield Timer(rst_delay)
         rst_signal <= rstn_val
         
-    '''
     @cocotb.coroutine
     @abstractmethod
-    def configure_dut(self):
-        pass
-
-    @cocotb.coroutine
-    @abstractmethod
-    def drive_input(self):
-        pass
-
-    @cocotb.coroutine
-    @abstractmethod
-    def terminate_dut_drive(self):
-        pass
-    '''
-
-    def setup_experiment(self):
-        '''
-        This function will be called before the verification loop is started in
-        run(self). Override this function if necessary in the subclass to set
-        up coroutines like clock signal before the start of the
-        verification (see example subclass).
-        '''
+    def setup_rl_run(self):
         pass
 
     @cocotb.coroutine
@@ -126,6 +108,12 @@ class CocotbEnv(ABC):
         '''
         pass
 
+    @cocotb.coroutine
+    @abstractmethod
+    def terminate_dut_drive(self):
+        pass
+
+
     def finish_experiment(self):
         '''
         This function will be called at the end of the verification experiment
@@ -142,7 +130,6 @@ class CocotbEnv(ABC):
         not override this in the subclass. Instead, modify the contents of this
         function here if necessary.
         '''
-        self.setup_experiment()
 
         # verification loop
         for i in range(self.NUM_EPISODES):
@@ -167,17 +154,29 @@ class CocotbEnv(ABC):
             assert len(self.continuous_actions) == len(self.FSM_STATES)
 
             # execute the verification logic of the design
+            if(single_state):
+                setup_rl_run_coroutine = cocotb.fork(self.setup_rl_run())
+
             verif_config_coroutine = cocotb.fork(self.verify_configure())
             yield verif_config_coroutine.join()
 
-            if(single_state):
+            self.drive_input_iter=0
+            while(self.drive_input_iter < self.num_inputs):
+                if(single_state == False):
+                    setup_rl_run_coroutine = cocotb.fork(self.setup_rl_run())
                 verif_dut_drive_coroutine = cocotb.fork(self.verify_dut_input_drive())
                 yield verif_dut_drive_coroutine.join()
-                self.parent_conn.send(self.cocotb_coverage)
-            else:
-                pass
+                if(single_state == False):
+                    setup_rl_run_coroutine.kill()
+                    self.parent_conn.send(self.cocotb_coverage)
+                    
+            terminate_dut_drive_coroutine = cocotb.fork(self.terminate_dut_drive())
+            yield terminate_dut_drive_coroutine.join()
 
             # send the coverage to the RL agent for computing reward
+            if(single_state):
+                setup_rl_run_coroutine.kill()
+                self.parent_conn.send(self.cocotb_coverage)
 
         # end the RL process
         self.rl_process.join()
