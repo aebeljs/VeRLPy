@@ -342,154 +342,6 @@ class TestBench(object):
         self.stopped = True
 
 
-def start_compression(tb, word_width, index_width):
-    ma_start_compression_word_width = word_width
-    ma_start_compression_index_width = index_width
-    ma_get_input_val = 0
-    EN_ma_start_compression = 1
-    EN_ma_get_input = 0
-    EN_ma_end_compression = 0
-    EN_mav_send_compressed_value = 0
-    yield InputTransaction(tb,
-                           ma_start_compression_word_width,
-                           ma_start_compression_index_width,
-                           ma_get_input_val,
-                           EN_ma_start_compression,
-                           EN_ma_get_input,
-                           EN_ma_end_compression,
-                           EN_mav_send_compressed_value
-                           )
-
-    EN_ma_start_compression = 0
-    yield InputTransaction(tb,
-                           ma_start_compression_word_width,
-                           ma_start_compression_index_width,
-                           ma_get_input_val,
-                           EN_ma_start_compression,
-                           EN_ma_get_input,
-                           EN_ma_end_compression,
-                           EN_mav_send_compressed_value
-                           )
-
-
-def random_input_gen(tb):
-    ma_start_compression_word_width = 0
-    ma_start_compression_index_width = 0
-    ma_get_input_val = random.randint(1,0xFFFFFFFF)
-    EN_ma_start_compression = 0
-    EN_ma_get_input = 1
-    EN_ma_end_compression = 0
-    EN_mav_send_compressed_value = 0
-    yield InputTransaction(tb,
-                           ma_start_compression_word_width,
-                           ma_start_compression_index_width,
-                           ma_get_input_val,
-                           EN_ma_start_compression,
-                           EN_ma_get_input,
-                           EN_ma_end_compression,
-                           EN_mav_send_compressed_value
-                           )
-
-    EN_ma_get_input = 0
-    yield InputTransaction(tb,
-                           ma_start_compression_word_width,
-                           ma_start_compression_index_width,
-                           ma_get_input_val,
-                           EN_ma_start_compression,
-                           EN_ma_get_input,
-                           EN_ma_end_compression,
-                           EN_mav_send_compressed_value
-                           )
-
-def specific_input_gen(tb, val):
-    ma_start_compression_word_width = 0
-    ma_start_compression_index_width = 0
-    ma_get_input_val = val
-    EN_ma_start_compression = 0
-    EN_ma_get_input = 1
-    EN_ma_end_compression = 0
-    EN_mav_send_compressed_value = 0
-    yield InputTransaction(tb,
-                           ma_start_compression_word_width,
-                           ma_start_compression_index_width,
-                           ma_get_input_val,
-                           EN_ma_start_compression,
-                           EN_ma_get_input,
-                           EN_ma_end_compression,
-                           EN_mav_send_compressed_value
-                           )
-
-    EN_ma_get_input = 0
-    yield InputTransaction(tb,
-                           ma_start_compression_word_width,
-                           ma_start_compression_index_width,
-                           ma_get_input_val,
-                           EN_ma_start_compression,
-                           EN_ma_get_input,
-                           EN_ma_end_compression,
-                           EN_mav_send_compressed_value
-                           )
-
-
-def enable_compression_output(tb,en_val):
-    ma_start_compression_word_width = 0
-    ma_start_compression_index_width = 0
-    ma_get_input_val = 0
-    EN_ma_start_compression = 0
-    EN_ma_get_input = 0
-    EN_ma_end_compression = 0
-    EN_mav_send_compressed_value = en_val
-    yield InputTransaction(tb,
-                           ma_start_compression_word_width,
-                           ma_start_compression_index_width,
-                           ma_get_input_val,
-                           EN_ma_start_compression,
-                           EN_ma_get_input,
-                           EN_ma_end_compression,
-                           EN_mav_send_compressed_value
-                           )
-    '''
-    EN_mav_send_compressed_value = 0
-    yield InputTransaction(tb,
-                           ma_start_compression_word_width,
-                           ma_start_compression_index_width,
-                           ma_get_input_val,
-                           EN_ma_start_compression,
-                           EN_ma_get_input,
-                           EN_ma_end_compression,
-                           EN_mav_send_compressed_value
-                           )
-    '''
-
-def enable_end_compression(tb):
-    ma_start_compression_word_width = 0
-    ma_start_compression_index_width = 0
-    ma_get_input_val = 0
-    EN_ma_start_compression = 0
-    EN_ma_get_input = 0
-    EN_ma_end_compression = 1
-    EN_mav_send_compressed_value = 0
-    yield InputTransaction(tb,
-                           ma_start_compression_word_width,
-                           ma_start_compression_index_width,
-                           ma_get_input_val,
-                           EN_ma_start_compression,
-                           EN_ma_get_input,
-                           EN_ma_end_compression,
-                           EN_mav_send_compressed_value
-                           )
-
-    EN_ma_end_compression = 0
-    yield InputTransaction(tb,
-                            ma_start_compression_word_width,
-                            ma_start_compression_index_width,
-                            ma_get_input_val,
-                            EN_ma_start_compression,
-                            EN_ma_get_input,
-                            EN_ma_end_compression,
-                            EN_mav_send_compressed_value
-                            )
-
 @cocotb.coroutine
 def clock_gen(signal):
     while True:
@@ -498,9 +350,20 @@ def clock_gen(signal):
         signal <= 1
         yield Timer(1)
 
+
+@cocotb.coroutine
+def monitor_signals(dut):
+    while True:
+        yield RisingEdge(dut.CLK)
+        s = [(int)(dut.rg_block_counter.value == 16),
+             (int)((dut.rg_block_length.value)%4 != 0),
+             (int)(dut.rg_next_count != 0)]
+        print(s)
+
 @cocotb.test()
 def run_test(dut):
     cocotb.fork(clock_gen(dut.CLK))
+    cocotb.fork(monitor_signals(dut))
 
     tb = TestBench(dut)
 
@@ -517,43 +380,35 @@ def run_test(dut):
         dut.RST_N <= 0
         yield Timer(2)
         dut.RST_N <= 1
-        start_comp = start_compression(tb,word_width,index_width)
-        for t in start_comp:
-            yield tb.input_drv.send(t)
-        yield RisingEdge(dut.CLK)
+
+        yield tb.input_drv.send(InputTransaction(tb,word_width,index_width,0,1,0,0,0))
+        yield tb.input_drv.send(InputTransaction(tb,0,0,0,0,0,0,0))
         yield RisingEdge(dut.CLK)
         n2 = 0
         N2 = 10
         while(n2 < N2):
             if(dut.RDY_ma_get_input == 1):
-                input_gen = random_input_gen(tb)
-                for t in input_gen:
-                    yield tb.input_drv.send(t)
+                dut_input = random.randint(1,2**63-1)
+                yield tb.input_drv.send(InputTransaction(tb,0,0,dut_input,0,1,0,0))
+                yield tb.input_drv.send(InputTransaction(tb,0,0,0,0,1,0,0))
                 n2=n2+1
                 yield RisingEdge(dut.CLK)
                 yield RisingEdge(dut.CLK)
             elif(dut.RDY_mav_send_compressed_value == 1):
-                output_enable = enable_compression_output(tb,1)
-                for t in output_enable:
-                    yield tb.input_drv.send(t)
-                output_enable = enable_compression_output(tb,0)
-                for t in output_enable:
-                    yield tb.input_drv.send(t)
+                yield tb.input_drv.send(InputTransaction(tb,0,0,0,0,0,0,1))
+                yield tb.input_drv.send(InputTransaction(tb,0,0,0,0,0,0,0))
                 yield RisingEdge(dut.CLK)
                 yield RisingEdge(dut.CLK)
             else:
                 yield RisingEdge(dut.CLK)
-        end_comp = enable_end_compression(tb)
-        for t in end_comp:
-            yield tb.input_drv.send(t)
-        output_enable = enable_compression_output(tb,1)
-        for t in output_enable:
-            yield tb.input_drv.send(t)
-        for t in range(2):
-            yield RisingEdge(dut.CLK)
-        output_enable = enable_compression_output(tb,0)
-        for t in output_enable:
-            yield tb.input_drv.send(t)
+
+        yield tb.input_drv.send(InputTransaction(tb,0,0,0,0,0,1,0))
+        yield tb.input_drv.send(InputTransaction(tb,0,0,0,0,0,0,0))
+
+        yield tb.input_drv.send(InputTransaction(tb,0,0,0,0,0,0,1))
+        yield tb.input_drv.send(InputTransaction(tb,0,0,0,0,0,0,0))
+        yield RisingEdge(dut.CLK)
+        yield RisingEdge(dut.CLK)
         for n in range(20):
             yield RisingEdge(dut.CLK)
         yield RisingEdge(dut.CLK)
