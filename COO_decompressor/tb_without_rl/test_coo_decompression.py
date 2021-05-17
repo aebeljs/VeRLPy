@@ -209,7 +209,10 @@ class Testbench(object):
 def monitor_signals(dut):
     while True:
         yield RisingEdge(dut.CLK)
-
+        s = [(int)(dut.rg_block_counter.value == 16),
+             (int)((dut.rg_word_width.value + dut.rg_index_width.value)%4 != 0),
+             (int)(dut.rg_next_count != 0)]
+        print(s)
 
 @cocotb.coroutine
 def clock_gen(signal):
