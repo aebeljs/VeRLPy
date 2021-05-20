@@ -1,5 +1,0 @@
-hw_modules/build/*
-**/dump.vcd
-**/results.xml
-**/sim_build/*
-**/__pycache__/*
