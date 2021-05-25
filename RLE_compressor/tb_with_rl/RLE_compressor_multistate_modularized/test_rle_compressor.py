@@ -18,13 +18,13 @@ class CompressorCocotbEnv(CocotbEnv):
         self.history = ''
         self.num_inputs = 1
         self.drive_input_iter = 0
+        cocotb.fork(self.clock_gen(self.dut.CLK,1))
 
 
     @cocotb.coroutine
     def setup_rl_run(self):
-        cocotb.fork(self.clock_gen(self.dut.CLK,1))
         self.cocotb_coverage.clear()
-        m_sig = cocotb.fork(monitor_signals(self.dut, self.cocotb_coverage, self.tb.count_width))   # tracks states covered
+        self.coverage_coroutine = cocotb.fork(monitor_signals(self.dut, self.cocotb_coverage, self.tb.count_width))   # tracks states covered
         self.history = ''    # to store the binary sequence for FSM based sequence generation
         yield Timer(1)
 
@@ -50,7 +50,7 @@ class CompressorCocotbEnv(CocotbEnv):
         yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
         yield RisingEdge(self.dut.CLK)
         self.logger.info('cocotb | dut verify configure end ')
-    
+
 
     @cocotb.coroutine
     def verify_dut_input_drive(self):
@@ -68,7 +68,7 @@ class CompressorCocotbEnv(CocotbEnv):
             yield RisingEdge(self.dut.CLK)
             self.drive_input_iter = self.drive_input_iter + 1
         elif(self.dut.RDY_mav_send_compressed_value == 1):
-            yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,1)) 
+            yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,1))
             yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
 
 
@@ -93,20 +93,22 @@ class CompressorCocotbEnv(CocotbEnv):
     @cocotb.coroutine
     def terminate_dut_drive(self):
         self.logger.info('cocotb | dut drive terminate begin ')
-        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,1,0)) 
+        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,1,0))
         yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
 
-        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,1)) 
+        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,1))
         for t in range(2):
             yield RisingEdge(self.dut.CLK)
-        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0)) 
+        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
 
-        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,1)) 
+        yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,1))
         for t in range(2):
             yield RisingEdge(self.dut.CLK)
         yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
 
         self.logger.info('cocotb | dut drive terminate end ')
+
+        self.coverage_coroutine.kill()
 
         for n in range(20):
             yield RisingEdge(self.dut.CLK)

@@ -67,9 +67,9 @@ class InputMonitor(BusMonitor):
         while True:
             if((self.bus.EN_ma_get_inputs == 1 and self.bus.RDY_ma_get_inputs == 1) or
                (self.bus.EN_ma_send_decompressed_output == 1 and self.bus.RDY_ma_send_decompressed_output == 1)):
-                print('[IN_MON] {0:25} : {1}'.format('EN_ma_get_inputs',self.bus.EN_ma_get_inputs.value.integer))
-                print('[IN_MON] {0:25} : {1}'.format('ma_get_inputs',hex(self.bus.ma_get_inputs_val.value.integer)))
-                print('[IN_MON] {0:25} : {1}'.format('EN_ma_send_decompressed_output',self.bus.EN_ma_send_decompressed_output.value.integer))
+                # print('[IN_MON] {0:25} : {1}'.format('EN_ma_get_inputs',self.bus.EN_ma_get_inputs.value.integer))
+                # print('[IN_MON] {0:25} : {1}'.format('ma_get_inputs',hex(self.bus.ma_get_inputs_val.value.integer)))
+                # print('[IN_MON] {0:25} : {1}'.format('EN_ma_send_decompressed_output',self.bus.EN_ma_send_decompressed_output.value.integer))
                 vec = (
                         self.bus.EN_ma_get_inputs.value.integer,
                         self.bus.ma_get_inputs_val.value.integer,
@@ -125,10 +125,10 @@ class Monitor(BusMonitor):
         while True:
             if self.bus.RDY_mv_get_decompressed_output.value != 1:
                 yield outp_edge
-            print('[DUT_MON] {0:<25} : {1}'.format('RDY_ma_get_inputs',self.bus.RDY_ma_get_inputs.value))
-            print('[DUT_MON] {0:<25} : {1}'.format('mv_get_decompressed_output',self.bus.mv_get_decompressed_output.value))
-            print('[DUT_MON] {0:<25} : {1}'.format('RDY_mv_get_decompressed_output',self.bus.RDY_mv_get_decompressed_output.value))
-            print('[DUT_MON] {0:<25} : {1}'.format('RDY_ma_send_decompressed_output',self.bus.RDY_ma_send_decompressed_output.value))
+            # print('[DUT_MON] {0:<25} : {1}'.format('RDY_ma_get_inputs',self.bus.RDY_ma_get_inputs.value))
+            # print('[DUT_MON] {0:<25} : {1}'.format('mv_get_decompressed_output',self.bus.mv_get_decompressed_output.value))
+            # print('[DUT_MON] {0:<25} : {1}'.format('RDY_mv_get_decompressed_output',self.bus.RDY_mv_get_decompressed_output.value))
+            # print('[DUT_MON] {0:<25} : {1}'.format('RDY_ma_send_decompressed_output',self.bus.RDY_ma_send_decompressed_output.value))
 
             self._recv(OutputTransaction(self.tb,
                 self.bus.RDY_ma_get_inputs.value,
@@ -141,13 +141,13 @@ class Monitor(BusMonitor):
 
 class DUTScoreboard(Scoreboard):
     def compare(self, got, exp, log, **_):
-        print(got.value[1])
-        print(exp.value[1])
+        # print(got.value[1])
+        # print(exp.value[1])
         if(got.value[1] != exp.value[1]):
             print("Values mismatched")
             exit(1)
-        else:
-            print("Values matched")
+        # else:
+        #     print("Values matched")
 
 
 class Testbench(object):
@@ -180,8 +180,8 @@ class Testbench(object):
                 ma_get_inputs_val,
                 EN_ma_send_decompressed_output
         ) = transaction
-        print("From Model")
-        print("",EN_ma_get_inputs, ma_get_inputs_val, EN_ma_send_decompressed_output)
+        # print("From Model")
+        # print("",EN_ma_get_inputs, ma_get_inputs_val, EN_ma_send_decompressed_output)
 
     def stop(self):
         self.stopped = True

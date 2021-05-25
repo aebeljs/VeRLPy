@@ -15,13 +15,13 @@ class COODecompressorCocotbEnv(CocotbEnv):
         super().__init__()
         self.dut = dut
         self.tb = Testbench(dut)
+        cocotb.fork(self.clock_gen(self.dut.CLK, 1))
 
     @cocotb.coroutine
     def setup_rl_run(self):
-        cocotb.fork(self.clock_gen(self.dut.CLK, 1))
         self.cocotb_coverage.clear()
-        m_sig = cocotb.fork(monitor_signals(self.dut, self.cocotb_coverage))   # tracks states covered
-        cocotb.fork(en_decompressed_output(self.dut, self.tb))
+        self.coverage_coroutine = cocotb.fork(monitor_signals(self.dut, self.cocotb_coverage))   # tracks states covered
+        self.enable_coroutine = cocotb.fork(en_decompressed_output(self.dut, self.tb))
         yield Timer(1) # needed?
 
     @cocotb.coroutine
@@ -30,15 +30,14 @@ class COODecompressorCocotbEnv(CocotbEnv):
 
     @cocotb.coroutine
     def verify_configure(self):
-        self.logger.info('cocotb | dut verify configure begin ')
         self.index_width = self.discrete_actions[0]
         print('index width', self.index_width)
+        self.logger.info('cocotb | index_width | ' + str(self.index_width))
 
         self.word_width = self.discrete_actions[1]
         print('word width', self.word_width)
+        self.logger.info('cocotb | word_width | ' + str(self.word_width))
         yield RisingEdge(self.dut.CLK)
-
-        self.logger.info('cocotb | dut verify configure end ')
 
     @cocotb.coroutine
     def rl_step_dut_input_drive(self):
@@ -61,7 +60,6 @@ class COODecompressorCocotbEnv(CocotbEnv):
         self.rl_done = True
 
     def compute_rl_feedback(self):
-        self.logger.info('cocotb | computing rl feedback ')
         observation = 0
         info = {}
         return observation, info
@@ -73,7 +71,9 @@ class COODecompressorCocotbEnv(CocotbEnv):
             yield RisingEdge(self.dut.CLK)
         if(self.dut.RDY_ma_send_decompressed_output == 1):
             yield FallingEdge(self.dut.RDY_ma_send_decompressed_output)
-
+        
+        self.coverage_coroutine.kill()
+        self.enable_coroutine.kill()
         for delay in range(10):
             yield RisingEdge(self.dut.CLK)
 

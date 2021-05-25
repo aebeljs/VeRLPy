@@ -197,7 +197,7 @@ class CocotbEnv(ABC):
                 self.discrete_actions.append(self.DISCRETE_PARAM_VALUES[j][x - 1])
 
             # obtain the continous actions
-            self.continuous_actions = received_actions[:-num_discrete_params]
+            self.continuous_actions = received_actions[:len(received_actions) - num_discrete_params]
             assert len(self.continuous_actions) == len(self.FSM_STATES)
             ''' End of computation from rl_step actions '''
 
