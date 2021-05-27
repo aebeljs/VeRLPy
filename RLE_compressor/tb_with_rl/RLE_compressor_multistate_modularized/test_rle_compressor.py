@@ -18,12 +18,12 @@ class CompressorCocotbEnv(CocotbEnv):
         self.history = ''
         self.num_inputs = 1
         self.drive_input_iter = 0
-        cocotb.fork(self.clock_gen(self.dut.CLK,1))
 
 
     @cocotb.coroutine
-    def setup_rl_run(self):
+    def setup_rl_episode(self):
         self.cocotb_coverage.clear()
+        self.clock_coroutine = cocotb.fork(self.clock_gen(self.dut.CLK,1))
         self.coverage_coroutine = cocotb.fork(monitor_signals(self.dut, self.cocotb_coverage, self.tb.count_width))   # tracks states covered
         self.history = ''    # to store the binary sequence for FSM based sequence generation
         yield Timer(1)
@@ -34,7 +34,7 @@ class CompressorCocotbEnv(CocotbEnv):
 
 
     @cocotb.coroutine
-    def verify_configure(self):
+    def rl_step_dut_tb_configure(self):
         self.logger.info('cocotb | dut verify configure begin ')
         count_width = self.discrete_actions[0]
         print('count width', count_width)
@@ -83,7 +83,7 @@ class CompressorCocotbEnv(CocotbEnv):
         self.rl_done = True
 
 
-    def compute_rl_feedback(self):
+    def rl_step_compute_feedback(self):
         self.logger.info('cocotb | computing rl feedback ')
         observation = 0
         info = {}
@@ -91,7 +91,7 @@ class CompressorCocotbEnv(CocotbEnv):
 
 
     @cocotb.coroutine
-    def terminate_dut_drive(self):
+    def terminate_rl_episode(self):
         self.logger.info('cocotb | dut drive terminate begin ')
         yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,1,0))
         yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
@@ -108,10 +108,11 @@ class CompressorCocotbEnv(CocotbEnv):
 
         self.logger.info('cocotb | dut drive terminate end ')
 
-        self.coverage_coroutine.kill()
-
         for n in range(20):
             yield RisingEdge(self.dut.CLK)
+
+        self.clock_coroutine.kill()
+        self.coverage_coroutine.kill()
 
         self.logger.info('cocotb | history | ' + self.history)
 

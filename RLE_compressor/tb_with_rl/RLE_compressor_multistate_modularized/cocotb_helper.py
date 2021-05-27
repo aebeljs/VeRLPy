@@ -65,7 +65,7 @@ class CocotbEnv(ABC):
         Inputs
         clk_signal: The signal corresponding to the clock of the DUT should be
                     passed here
-        clk_delay : The delay required for the clock signal
+        clk_delay : The delay required for the clock signal - (Time period / 2)
         '''
         while True:
             clk_signal <= 0
@@ -76,7 +76,7 @@ class CocotbEnv(ABC):
     @cocotb.coroutine
     def assert_reset(self, rst_signal, rst_val, rstn_val, rst_delay):
         '''
-        This coroutine can be used to set up the reset signal of the DUT.
+        This coroutine can be used to reset DUT.
 
         Inputs
         rst_signal: The signal corresponding to the reset of the DUT should be
@@ -94,14 +94,13 @@ class CocotbEnv(ABC):
 
     @cocotb.coroutine
     @abstractmethod
-    def setup_rl_run(self):
+    def setup_rl_episode(self):
         '''
         This coroutine will be called at the start of each RL episode when the
         reset() function of the gym environment is called. It can be used to
-        start the coroutines which track the register elements of interest in
-        the DUT. See the loop in run(self) below for the exact call location.
-        This method must be overridden in the subclass.
-
+        start the coroutines such as DUT clock coroutines, coroutines which track 
+        the register elements of interest in the DUT. See the loop in run(self) 
+        below for the exact call location. This method must be overridden in the subclass.
         The list self.cocotb_coverage must be populated with the episode's
         coverage in the implementation of this function so that it can be sent
         to the RL agent for reward computation.
@@ -120,33 +119,58 @@ class CocotbEnv(ABC):
 
     @cocotb.coroutine
     @abstractmethod
-    def verify_configure(self):
+    def rl_step_dut_tb_configure(self):
         '''
         This coroutine will be called in each step taken by the RL agent. It can
         be used to configure the testbench parameter and dut once the actions for that
-        episode are obtained from the RL process. See the loop in run(self)
-        below for the exact call location. This method must be overridden in the
-        subclass with the core verification logic of the hardware design to be
-        verified.
-
-        The list self.cocotb_coverage must be populated with the episode's
-        coverage in the implementation of this function so that it can be sent
-        to the RL agent for reward computation.
+        step are obtained from the RL process. 
+        
+        See the loop in run(self) below for the exact call location. This method 
+        must be overridden in the subclass with the core verification logic of 
+        the hardware design to be verified.
         '''
         pass
 
     @cocotb.coroutine
     @abstractmethod
     def rl_step_dut_input_drive(self):
+        '''
+        This coroutine will be called in each step taken by the RL agent after 
+        rl_step_dut_tb_configure(self) coroutine. This completes the DUT input drive
+        for one RL step. Coverage tracking also happens parallely and will be sent to
+        rl process. With the coverage data, rl agent computes reward.
+        
+        See the loop in run(self) below for the exact call location. This method 
+        must be overridden in the subclass with the core verification logic of 
+        the hardware design to be verified.
+        '''
         pass
 
     @abstractmethod
-    def compute_rl_feedback(self):
+    def rl_step_compute_feedback(self):
+        '''
+        This function will be called at the end of every RL step to send rl feedback.
+        RL observation and RL done signal is computed based on the hardware state and 
+        sent to RL process.
+        
+        See the loop in run(self) below for the exact call location. This method 
+        must be overridden in the subclass with the core verification logic of 
+        the hardware design to be verified.
+        '''
         pass
 
     @cocotb.coroutine
     @abstractmethod
-    def terminate_dut_drive(self):
+    def terminate_rl_episode(self):
+        '''
+        This function will be called at the end of RL episode when rl_done signal is asserted 
+        as True from rl_step_compute_feedback(self) function. This asserts end of input drive signals
+        to DUT and terminates all the coroutines forked in setup_rl_episode(self) 
+        
+        See the loop in run(self) below for the exact call location. This method 
+        must be overridden in the subclass with the core verification logic of 
+        the hardware design to be verified.
+        '''
         pass
 
 
@@ -160,7 +184,7 @@ class CocotbEnv(ABC):
         pass
 
     @cocotb.coroutine
-    def run(self,single_state=True): ##TODO : Add fixed number of inputs in multi state or it will be suggested by RL
+    def run(self):
         '''
         This coroutine contains the control flow in the cocotb environment. Do
         not override this in the subclass. Instead, modify the contents of this
@@ -173,7 +197,7 @@ class CocotbEnv(ABC):
             x = self.parent_conn.recv()
             if(x == 'rl_reset'):
                 self.logger.info('cocotb | Step ' + str(i + 1))
-                setup_rl_run_coroutine = cocotb.fork(self.setup_rl_run())
+                setup_rl_episode_coroutine = cocotb.fork(self.setup_rl_episode())
                 assert_reset_coroutine = cocotb.fork(self.assert_dut_reset_from_rl())
                 yield assert_reset_coroutine.join()
                 self.logger.info('cocotb | Waiting for rl step after rl reset ')
@@ -201,23 +225,23 @@ class CocotbEnv(ABC):
             assert len(self.continuous_actions) == len(self.FSM_STATES)
             ''' End of computation from rl_step actions '''
 
-            verif_config_coroutine = cocotb.fork(self.verify_configure())
-            yield verif_config_coroutine.join()
+            rl_step_dut_tb_configure_coroutine = cocotb.fork(self.rl_step_dut_tb_configure())
+            yield rl_step_dut_tb_configure_coroutine.join()
 
             rl_step_dut_input_drive_coroutine = cocotb.fork(self.rl_step_dut_input_drive())
             yield rl_step_dut_input_drive_coroutine.join()
 
-            self.parent_conn.send(self.cocotb_coverage)
-            self.rl_observation, self.rl_info = self.compute_rl_feedback()
+            self.rl_observation, self.rl_info = self.rl_step_compute_feedback()
 
+            if(self.rl_done):
+                terminate_rl_episode_coroutine = cocotb.fork(self.terminate_rl_episode())
+                yield terminate_rl_episode_coroutine.join()
+                setup_rl_episode_coroutine.kill()
+
+            self.parent_conn.send(self.cocotb_coverage)
             self.parent_conn.send(self.rl_observation)
             self.parent_conn.send(self.rl_done)
             self.parent_conn.send(self.rl_info)
-
-            if(self.rl_done):
-                terminate_dut_drive_coroutine = cocotb.fork(self.terminate_dut_drive())
-                yield terminate_dut_drive_coroutine.join()
-                setup_rl_run_coroutine.kill()
 
         self.logger.info('cocotb | Waiting for RL process to complete ')
 
