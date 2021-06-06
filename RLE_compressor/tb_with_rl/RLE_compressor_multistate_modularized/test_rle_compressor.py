@@ -11,14 +11,12 @@ import math
 import time
 
 class CompressorCocotbEnv(CocotbEnv):
-    def __init__(self, dut):
+    def __init__(self, dut, observation_space):
         super().__init__()
         self.dut = dut
         self.tb = TestBench(dut)
+        self.observation_space = observation_space
         self.history = ''
-        self.num_inputs = 1
-        self.drive_input_iter = 0
-
 
     @cocotb.coroutine
     def setup_rl_episode(self):
@@ -27,15 +25,11 @@ class CompressorCocotbEnv(CocotbEnv):
         self.coverage_coroutine = cocotb.fork(monitor_signals(self.dut, self.cocotb_coverage, self.tb.count_width))   # tracks states covered
         self.history = ''    # to store the binary sequence for FSM based sequence generation
         yield Timer(1)
+        yield self.assert_reset(self.dut.RST_N, 0, 1, 2)
 
     @cocotb.coroutine
-    def assert_dut_reset_from_rl(self):
-        yield self.assert_reset(self.dut.RST_N,0,1,2)
-
-
-    @cocotb.coroutine
-    def rl_step_dut_tb_configure(self):
-        self.logger.info('cocotb | dut verify configure begin ')
+    def rl_step(self):
+        self.logger.info('cocotb | rl_step coroutine begin ')
         count_width = self.discrete_actions[0]
         print('count width', count_width)
         self.tb.count_width = count_width
@@ -43,13 +37,21 @@ class CompressorCocotbEnv(CocotbEnv):
         word_width = 4
         self.tb.word_width = word_width
 
-        self.num_inputs = self.discrete_actions[1]
-        print('N =', self.num_inputs)
+        num_inputs = self.discrete_actions[1]
+        print('N =', num_inputs)
 
         yield self.tb.input_drv.send(InputTransaction(self.tb, word_width, count_width,0,1,0,0,0))
         yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
         yield RisingEdge(self.dut.CLK)
-        self.logger.info('cocotb | dut verify configure end ')
+
+        self.drive_input_iter = 0
+        while(self.drive_input_iter < num_inputs):
+            verif_dut_drive_coroutine = cocotb.fork(self.verify_dut_input_drive())
+            yield verif_dut_drive_coroutine.join()
+
+        self.rl_done = True
+
+        self.logger.info('cocotb | rl_step coroutine end ')
 
 
     @cocotb.coroutine
@@ -70,25 +72,6 @@ class CompressorCocotbEnv(CocotbEnv):
         elif(self.dut.RDY_mav_send_compressed_value == 1):
             yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,1))
             yield self.tb.input_drv.send(InputTransaction(self.tb, 0,0,0,0,0,0,0))
-
-
-    @cocotb.coroutine
-    def rl_step_dut_input_drive(self):
-        self.logger.info('cocotb | rl step dut drive begin ')
-        self.drive_input_iter=0
-        while(self.drive_input_iter < self.num_inputs):
-            verif_dut_drive_coroutine = cocotb.fork(self.verify_dut_input_drive())
-            yield verif_dut_drive_coroutine.join()
-        self.logger.info('cocotb | rl step dut drive end ')
-        self.rl_done = True
-
-
-    def rl_step_compute_feedback(self):
-        self.logger.info('cocotb | computing rl feedback ')
-        observation = 0
-        info = {}
-        return observation,info
-
 
     @cocotb.coroutine
     def terminate_rl_episode(self):
@@ -135,5 +118,5 @@ def monitor_signals(dut, cocotb_coverage, count_width):
 
 @cocotb.test()
 def run_test(dut):
-    cocotb_env = CompressorCocotbEnv(dut)
+    cocotb_env = CompressorCocotbEnv(dut, gym.spaces.Discrete(1))
     yield cocotb_env.run()
