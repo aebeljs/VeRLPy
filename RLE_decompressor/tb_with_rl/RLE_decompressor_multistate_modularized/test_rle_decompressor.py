@@ -11,17 +11,17 @@ import math
 import time
 
 class RLEDecompressorCocotbEnv(CocotbEnv):
-    def __init__(self, dut):
+    def __init__(self, dut, observation_space):
         super().__init__()
         self.dut = dut
         self.tb = Testbench(dut)
+        self.observation_space = observation_space
         self.activation_map = []
         self.input_list = []
         self.history = ''
-        cocotb.fork(self.clock_gen(self.dut.CLK, 1))
 
     @cocotb.coroutine
-    def setup_rl_run(self):
+    def setup_rl_episode(self):
         self.cocotb_coverage.clear()
         self.activation_map.clear()
         self.input_list.clear()
@@ -29,25 +29,17 @@ class RLEDecompressorCocotbEnv(CocotbEnv):
         self.N = 400
         self.count_width = 6
         self.word_width = 4
+        self.clock_coroutine = cocotb.fork(self.clock_gen(self.dut.CLK, 1))
         self.coverage_coroutine = cocotb.fork(monitor_signals(self.dut, self.cocotb_coverage, self.count_width))
         self.get_output_coroutine = cocotb.fork(get_decompressed_output(self.dut, self.tb))
         yield Timer(1)
-
-    @cocotb.coroutine
-    def assert_dut_reset_from_rl(self):
         yield self.assert_reset(self.dut.RST_N, 0, 1, 2)
 
     @cocotb.coroutine
-    def verify_configure(self):
-        self.logger.info('cocotb | dut verify configure begin ')
-
+    def rl_step(self):
         for delay in range(10):
             yield RisingEdge(self.dut.CLK)
 
-        self.logger.info('cocotb | dut verify configure end ')
-
-    @cocotb.coroutine
-    def rl_step_dut_input_drive(self):
         design_config_string = self.count_width << 4 | self.word_width
 
         for n2 in range(self.N):
@@ -136,17 +128,10 @@ class RLEDecompressorCocotbEnv(CocotbEnv):
                     yield RisingEdge(self.dut.CLK)
                 n2 += 1
 
-
         self.rl_done = True
 
-    def compute_rl_feedback(self):
-        self.logger.info('cocotb | computing rl feedback ')
-        observation = 0
-        info = {}
-        return observation, info
-
     @cocotb.coroutine
-    def terminate_dut_drive(self):
+    def terminate_rl_episode(self):
         print("Driven all inputs for this episode ")
         for delay in range(5):
             yield RisingEdge(self.dut.CLK)
@@ -158,6 +143,8 @@ class RLEDecompressorCocotbEnv(CocotbEnv):
 
         for delay in range(10):
             yield RisingEdge(self.dut.CLK)
+
+        self.clock_coroutine.kill()
 
         # print(tb.expected_output.count)
         # print(tb.expected_output)
@@ -199,5 +186,5 @@ def monitor_signals(dut, cocotb_coverage, count_width):
 
 @cocotb.test()
 def run_test(dut):
-    cocotb_env = RLEDecompressorCocotbEnv(dut)
+    cocotb_env = RLEDecompressorCocotbEnv(dut, gym.spaces.Discrete(1))
     yield cocotb_env.run()

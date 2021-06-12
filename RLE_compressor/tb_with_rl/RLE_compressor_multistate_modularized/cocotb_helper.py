@@ -194,8 +194,6 @@ class CocotbEnv(ABC):
                 self.logger.info('cocotb | Step ' + str(i + 1))
                 setup_rl_episode_coroutine = cocotb.fork(self.setup_rl_episode())
                 yield setup_rl_episode_coroutine.join()
-                # assert_reset_coroutine = cocotb.fork(self.reset_dut())
-                # yield assert_reset_coroutine.join()
                 self.rl_done = False # as it is a new episode
                 self.logger.info('cocotb | Waiting for rl step after rl reset ')
                 x = self.parent_conn.recv()
