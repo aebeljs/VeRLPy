@@ -79,11 +79,22 @@ for line in file:
     components = [s.strip().rstrip() for s in components]
     if(len(components) < 5):
         continue
-    if((components[1] == 'INFO') and (components[2] == 'RL') and (components[3] == 'result') and ('action_hist' in components[4])):
+    if((components[1] == 'INFO') and (components[2] == 'cocotb') and (components[3] == 'result') and ('action_hist' in components[4])):
         i = components[4].split('_')[2]
-        data = ast.literal_eval(components[5])
-        plt.hist(data, bins=100)
-        plt.tight_layout()
-        plt.title('Histogram of action param ' + str(i) + ' in the activation map\n')
-        plt.savefig('./hist_of_actions' + '_param=' + str(i) + suffix + '.png', bbox_inches='tight')
-        plt.close()
+        if(len(components) < 7):
+            # continuous action
+            data = ast.literal_eval(components[5])
+            plt.hist(data, bins=100, range=[0.0, 1.0])
+            plt.tight_layout()
+            plt.title('Histogram of action param ' + str(i))
+            plt.savefig('./hist_of_actions' + '_param=' + str(i) + suffix + '.png', bbox_inches='tight')
+            plt.close()
+        else:
+            # discrete action
+            labels = ast.literal_eval(components[5])
+            data = ast.literal_eval(components[6])
+            plt.hist(data, bins=100, range=[min(labels), max(labels)])
+            plt.tight_layout()
+            plt.title('Histogram of action param ' + str(i))
+            plt.savefig('./hist_of_actions' + '_param=' + str(i) + suffix + '.png', bbox_inches='tight')
+            plt.close()

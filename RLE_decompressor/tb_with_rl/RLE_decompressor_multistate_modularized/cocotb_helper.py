@@ -53,6 +53,11 @@ class CocotbEnv(ABC):
         for param in discrete_params:
             self.DISCRETE_PARAM_VALUES.append(ast.literal_eval(self.config['discrete'][param]))
 
+        # list to store the processed action components
+        self.processed_action_list = []
+        for i in range(len(self.FSM_STATES) + len(discrete_params)):
+            self.processed_action_list.append([])
+
         self.rl_observation = 0
         self.rl_done = False
         self.rl_info = {}
@@ -186,6 +191,7 @@ class CocotbEnv(ABC):
         not override this in the subclass. Instead, modify the contents of this
         function here if necessary.
         '''
+        log_step = self.config['main'].getint('log_step')
 
         for i in range(self.NUM_STEPS):
             self.logger.info('cocotb | Waiting for rl step or rl reset ')
@@ -218,6 +224,11 @@ class CocotbEnv(ABC):
             self.continuous_actions = received_actions[:len(received_actions) - num_discrete_params]
             assert len(self.continuous_actions) == len(self.FSM_STATES)
 
+            # save the processed action component values
+            processed_action = self.continuous_actions + self.discrete_actions
+            for k in range(len(processed_action)):
+                self.processed_action_list[k].append(processed_action[k])
+
             rl_step_coroutine = cocotb.fork(self.rl_step())
             yield rl_step_coroutine.join()
 
@@ -237,5 +248,13 @@ class CocotbEnv(ABC):
         # end the RL process
         self.rl_process.join()
         self.logger.info('cocotb | RL process joined ')
+
+        # log processed actions
+        for i in range(len(self.FSM_STATES)):
+            self.logger.info('cocotb | result | action_hist_' + str(i + 1) + ' | ' + str(self.processed_action_list[i]))
+
+        for i in range(len(self.DISCRETE_PARAM_VALUES)):
+            x = len(self.FSM_STATES) + i
+            self.logger.info('cocotb | result | action_hist_' + str(x + 1) + ' | ' + str(self.DISCRETE_PARAM_VALUES[i]) + ' | ' + str(self.processed_action_list[x]))
 
         self.finish_experiment()

@@ -57,6 +57,9 @@ class SingleStateHardwareVerifEnv(gym.Env):
         self.action_space = gym.spaces.Box(0., 1., (num_action_params, ))
         self.observation_space = observation_space
 
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        self.log_step = config['main'].getint('log_step')
         self.num_action_params = num_action_params
         self.num_events = num_events
         self.total_binary_coverage = [0] * num_events   # stores the individual event coverage
@@ -98,13 +101,14 @@ class SingleStateHardwareVerifEnv(gym.Env):
         self.reward_list.append(reward)
         self.total_coverage.update(Counter(coverage))   # update total combination coverage
 
-        self.logger.info('RL | Step ' + str(step_count) + ' | action | ' + str(generator_probab))
-        self.logger.info('RL | Step ' + str(step_count) + ' | coverage | ' + str(coverage))
-        self.logger.info('RL | Step ' + str(step_count) + ' | binary_coverage | ' + str(binary_coverage))
-        self.logger.info('RL | Step ' + str(step_count) + ' | reward | ' + str(reward))
-        self.logger.info('RL | Step ' + str(step_count) + ' | observation | ' + str(observation))
-        self.logger.info('RL | Step ' + str(step_count) + ' | done | ' + str(done))
-        self.logger.info('RL | Step ' + str(step_count) + ' | info | ' + str(info))
+        if(self.log_step != 0):
+            self.logger.info('RL | Step ' + str(step_count) + ' | action | ' + str(generator_probab))
+            self.logger.info('RL | Step ' + str(step_count) + ' | coverage | ' + str(coverage))
+            self.logger.info('RL | Step ' + str(step_count) + ' | binary_coverage | ' + str(binary_coverage))
+            self.logger.info('RL | Step ' + str(step_count) + ' | reward | ' + str(reward))
+            self.logger.info('RL | Step ' + str(step_count) + ' | observation | ' + str(observation))
+            self.logger.info('RL | Step ' + str(step_count) + ' | done | ' + str(done))
+            self.logger.info('RL | Step ' + str(step_count) + ' | info | ' + str(info))
 
         return observation, reward, done, info
 
@@ -112,9 +116,9 @@ class SingleStateHardwareVerifEnv(gym.Env):
         # essential for the gym env
         self.conn.send('RL_reset')
         global step_count
-        self.logger.info('RL | Step ' + str(step_count) + ' |dut reset asserted')
         state = 0   # assuming that in each episode, the DUT is reset
-        self.logger.info('RL | Step ' + str(step_count) + ' | reset called')
+        if(self.log_step != 0):
+            self.logger.info('RL | Step ' + str(step_count) + ' | reset called')
         step_count += 1
         return state
 
