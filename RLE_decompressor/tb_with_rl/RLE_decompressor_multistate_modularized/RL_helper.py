@@ -167,6 +167,7 @@ def RL_run(conn, logger, timestamp, observation_space):
     NUM_SEQ_GEN_PARAMS = len(ast.literal_eval(config['cocotb']['fsm_states']))
     NUM_DESIGN_ENV_PARAMS = len(ast.literal_eval(config['cocotb']['discrete_params']))
     NUM_ACTION_PARAMS = NUM_SEQ_GEN_PARAMS + NUM_DESIGN_ENV_PARAMS
+    MODE = config['main'].getint('mode')
 
     # initialize the gym environment
     env = SingleStateHardwareVerifEnv(NUM_ACTION_PARAMS, NUM_EVENTS, REWARD_FUNCTION, conn, logger, observation_space)
@@ -187,12 +188,22 @@ def RL_run(conn, logger, timestamp, observation_space):
     learning_rate = config['RL'].getfloat('learning_rate')
     train_freq = ast.literal_eval(config['RL']['train_freq'])
 
-    # Run the verification experiment while the RL agent learns
-    model = SAC("MlpPolicy", env, action_noise=action_noise, verbose=1,
-                learning_starts=learning_starts, learning_rate=learning_rate,
-                train_freq=train_freq)  # add more hyperparameters here if needed
-    model.learn(total_timesteps=NUM_STEPS)
-    model.save('model_' + timestamp)
+
+    if(MODE != 0):
+        # Run the verification experiment while the RL agent learns
+        model = SAC("MlpPolicy", env, action_noise=action_noise, verbose=1,
+                    learning_starts=learning_starts, learning_rate=learning_rate,
+                    train_freq=train_freq)  # add more hyperparameters here if needed
+        model.learn(total_timesteps=NUM_STEPS)
+        model.save('model_' + timestamp)
+    else:
+        # Generate the random baseline without the RL agent
+        env.reset()
+        for i in range(NUM_STEPS):
+            action = env.action_space.sample()
+            obs, rew, done, info = env.step(action)
+            if(done):
+                env.reset()
 
     print(env.total_binary_coverage)
 

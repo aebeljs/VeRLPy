@@ -32,7 +32,7 @@ for line in file:
         data = ast.literal_eval(components[5])
         plt.vlines(list(range(len(data))), 0, data, color='C0', lw=4)
         plt.grid()
-        plt.xticks(rotation=90)
+        plt.xticks(list(range(len(data))), rotation=90)
         plt.tight_layout()
         plt.title("Histogram of individual event coverage\n")
         plt.savefig('./hist_of_binary_coverage' + suffix + '.png', bbox_inches='tight')
@@ -68,7 +68,7 @@ for line in file:
         plt.plot(data)
         plt.grid()
         plt.tight_layout()
-        plt.title("Reward vs episode\n")
+        plt.title("Reward vs step\n")
         plt.savefig('./reward_plot' + suffix + '.png', bbox_inches='tight')
         plt.close()
         break
