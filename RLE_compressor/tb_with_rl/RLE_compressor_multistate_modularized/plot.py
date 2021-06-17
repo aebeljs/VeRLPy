@@ -11,7 +11,7 @@ log_file = sys.argv[1]
 file_name = os.path.basename(log_file)
 file_name = os.path.splitext(file_name)[0]
 
-suffix = ''
+suffix = '_' + file_name.split('_')[0]
 file = open(log_file, 'r')
 
 for line in file:
@@ -30,9 +30,14 @@ for line in file:
         continue
     if((components[1] == 'INFO') and (components[2] == 'RL') and (components[3] == 'result') and (components[4] == 'total_binary_coverage')):
         data = ast.literal_eval(components[5])
-        plt.vlines(list(range(len(data))), 0, data, color='C0', lw=4)
+        x_range = list(range(len(data)))
+        plt.vlines(x_range, 0, data, color='C0', lw=4)
+        for a, b in zip(x_range, data):
+            plt.text(a, b, str(b), ha='center')
         plt.grid()
-        plt.xticks(list(range(len(data))), rotation=90)
+        # plt.xticks(list(range(len(data))), rotation=90)
+        plt.xticks(list(range(len(data))))
+        plt.xlabel('Events')
         plt.tight_layout()
         plt.title("Histogram of individual event coverage\n")
         plt.savefig('./hist_of_binary_coverage' + suffix + '.png', bbox_inches='tight')
@@ -66,9 +71,10 @@ for line in file:
     if((components[1] == 'INFO') and (components[2] == 'RL') and (components[3] == 'result') and (components[4] == 'reward_plot')):
         data = ast.literal_eval(components[5])
         plt.plot(data)
+        plt.xlabel('Steps')
         plt.grid()
         plt.tight_layout()
-        plt.title("Reward vs step\n")
+        plt.title("Reward vs steps\n")
         plt.savefig('./reward_plot' + suffix + '.png', bbox_inches='tight')
         plt.close()
         break

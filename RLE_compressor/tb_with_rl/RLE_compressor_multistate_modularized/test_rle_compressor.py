@@ -111,8 +111,7 @@ def monitor_signals(dut, cocotb_coverage, count_width):
         s = [(int)(dut.rg_word_counter.value == 16),
              (int)(dut.rg_zero_counter.value == 64),
              (int)(dut.rg_counter.value == (2**count_width - 2)),
-             (int)(dut.rg_next_count != 0),
-             (int)((dut.rg_zero_counter.value == 64) and (dut.rg_next_count != 0))]
+             (int)(dut.rg_next_count != 0)]
         s = ''.join(map(str, s))
         cocotb_coverage.append(s)
 

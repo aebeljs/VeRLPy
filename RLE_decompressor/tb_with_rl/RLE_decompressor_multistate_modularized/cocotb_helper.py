@@ -29,7 +29,11 @@ class CocotbEnv(ABC):
         # set up the logger
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
-        fh = logging.FileHandler(self.timestamp + '.log')
+        mode = self.config['main'].getint('mode')
+        if(mode != 0):
+            fh = logging.FileHandler('RL_' + self.timestamp + '.log')
+        else:
+            fh = logging.FileHandler('random_' + self.timestamp + '.log')
         fh.setLevel(logging.INFO)
         formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
         fh.setFormatter(formatter)
