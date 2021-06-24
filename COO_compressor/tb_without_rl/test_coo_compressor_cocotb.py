@@ -390,7 +390,7 @@ def run_test(dut):
             if(dut.RDY_ma_get_input == 1):
                 dut_input = random.randint(1,2**63-1)
                 yield tb.input_drv.send(InputTransaction(tb,0,0,dut_input,0,1,0,0))
-                yield tb.input_drv.send(InputTransaction(tb,0,0,0,0,1,0,0))
+                yield tb.input_drv.send(InputTransaction(tb,0,0,0,0,0,0,0))
                 n2=n2+1
                 yield RisingEdge(dut.CLK)
                 yield RisingEdge(dut.CLK)

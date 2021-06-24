@@ -45,7 +45,7 @@ class COOCompressorCocotbEnv(CocotbEnv):
             if(self.dut.RDY_ma_get_input == 1):
                 dut_input = random.randint(1, 2**63 - 1)
                 yield self.tb.input_drv.send(InputTransaction(self.tb, 0, 0, dut_input, 0, 1, 0, 0))
-                yield self.tb.input_drv.send(InputTransaction(self.tb, 0, 0, 0, 0, 1, 0, 0))
+                yield self.tb.input_drv.send(InputTransaction(self.tb, 0, 0, 0, 0, 0, 0, 0))
                 n2 += 1
                 yield RisingEdge(self.dut.CLK)
                 yield RisingEdge(self.dut.CLK)
