@@ -44,10 +44,10 @@ def get_next_state_of_FSM(binary_seq, patterns):
     return 0
 
 
-class SingleStateHardwareVerifEnv(gym.Env):
+class HardwareVerifEnv(gym.Env):
     '''
     OpenAI Gym environment for hardware verification using RL. The Markov state
-    space consists of a single state and the inputs to the DUT are parameterized
+    space consists of a single state by default and the inputs to the DUT are parameterized
     and generated using a continuous RL action space as represented by the Box()
     below.
     '''
@@ -170,7 +170,7 @@ def RL_run(conn, logger, timestamp, observation_space):
     MODE = config['main'].getint('mode')
 
     # initialize the gym environment
-    env = SingleStateHardwareVerifEnv(NUM_ACTION_PARAMS, NUM_EVENTS, REWARD_FUNCTION, conn, logger, observation_space)
+    env = HardwareVerifEnv(NUM_ACTION_PARAMS, NUM_EVENTS, REWARD_FUNCTION, conn, logger, observation_space)
 
     # optional: check structural correctness of the gym env
     # from stable_baselines3.common.env_checker import check_env

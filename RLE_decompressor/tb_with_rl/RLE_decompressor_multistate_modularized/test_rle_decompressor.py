@@ -1,14 +1,16 @@
 import cocotb
-from cocotb_helper import *
-from test_rle_decompressor_helper import *
-from RL_helper import *
-from multiprocessing import *
+from cocotb_helper import CocotbEnv
+from test_rle_decompressor_helper import Testbench, InputTransaction, get_decompressed_output
+from cocotb.triggers import Timer, RisingEdge, FallingEdge
+from RL_helper import get_next_state_of_FSM
 import numpy as np
 import configparser
 import ast
 import logging
 import math
 import time
+import random
+import gym
 
 class RLEDecompressorCocotbEnv(CocotbEnv):
     def __init__(self, dut, observation_space):
@@ -169,7 +171,7 @@ class RLEDecompressorCocotbEnv(CocotbEnv):
         self.tb.stop()
         yield RisingEdge(self.dut.CLK)
 
-@coroutine
+@cocotb.coroutine
 def monitor_signals(dut, cocotb_coverage, count_width):
     while True:
         yield RisingEdge(dut.CLK)

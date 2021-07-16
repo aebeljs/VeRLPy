@@ -1,14 +1,16 @@
 import cocotb
-from cocotb_helper import *
-from test_rle_compressor_helper import *
-from RL_helper import *
-from multiprocessing import *
+from cocotb_helper import CocotbEnv
+from test_rle_compressor_helper import TestBench, InputTransaction
+from cocotb.triggers import Timer, RisingEdge
+from RL_helper import get_next_state_of_FSM
 import numpy as np
 import configparser
 import ast
 import logging
 import math
 import time
+import random
+import gym
 
 class RLECompressorCocotbEnv(CocotbEnv):
     def __init__(self, dut, observation_space):

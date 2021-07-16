@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 import cocotb
 from cocotb.triggers import Timer
-from RL_helper import *
-from multiprocessing import *
+from RL_helper import RL_run
+from multiprocessing import Process, Pipe
 import numpy as np
 import configparser
 import ast
