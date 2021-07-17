@@ -51,16 +51,17 @@ class HardwareVerifEnv(gym.Env):
     and generated using a continuous RL action space as represented by the Box()
     below.
     '''
-    def __init__(self, num_action_params, num_events, reward_function,
-                 conn, logger, observation_space):
+    def __init__(self, num_events, reward_function,
+                 conn, logger, observation_space, action_space):
         # essential for the gym env
-        self.action_space = gym.spaces.Box(0., 1., (num_action_params, ))
+        # self.action_space = gym.spaces.Box(0., 1., (num_action_params, ))
+        self.action_space = action_space
         self.observation_space = observation_space
+        self.num_action_params = action_space.shape[-1]
 
         config = configparser.ConfigParser()
         config.read('config.ini')
         self.log_step = config['main'].getint('log_step')
-        self.num_action_params = num_action_params
         self.num_events = num_events
         self.total_binary_coverage = [0] * num_events   # stores the individual event coverage
         self.total_coverage = Counter([])   # stores the combination event coverage
@@ -69,7 +70,7 @@ class HardwareVerifEnv(gym.Env):
         self.conn = conn    # Pipe object connection for communicating with the cocotb process
         self.logger = logger
         self.chosen_actions = []    # stores the actions chosen by the agent over the step_counts
-        for i in range(num_action_params):
+        for i in range(self.num_action_params):
             self.chosen_actions.append([])
 
     def step(self, action):
@@ -147,6 +148,15 @@ class HardwareVerifEnv(gym.Env):
             reward += (binary_coverage[i] * reward_function[i])
         return reward
 
+def tryeval(val):
+    '''
+    Helper function for converting the string in val to the appropriate type
+    '''
+    try:
+        val = ast.literal_eval(val)
+    except ValueError:
+        pass
+    return val
 
 def RL_run(conn, logger, timestamp, observation_space):
     '''
@@ -164,19 +174,28 @@ def RL_run(conn, logger, timestamp, observation_space):
     NUM_EVENTS = config['main'].getint('num_events')
     NUM_STEPS = config['main'].getint('num_steps')
     REWARD_FUNCTION = ast.literal_eval(config['main']['reward_function'])
-    NUM_SEQ_GEN_PARAMS = len(ast.literal_eval(config['cocotb']['fsm_states']))
-    NUM_DESIGN_ENV_PARAMS = len(ast.literal_eval(config['cocotb']['discrete_params']))
+    LOWER_BOUNDS = ast.literal_eval(config['continuous']['lower_bounds'])
+    UPPER_BOUNDS = ast.literal_eval(config['continuous']['upper_bounds'])
+    assert(len(LOWER_BOUNDS) == len(UPPER_BOUNDS))
+    NUM_SEQ_GEN_PARAMS = len(LOWER_BOUNDS)
+    NUM_DESIGN_ENV_PARAMS = len(ast.literal_eval(config['main']['discrete_params']))
     NUM_ACTION_PARAMS = NUM_SEQ_GEN_PARAMS + NUM_DESIGN_ENV_PARAMS
     MODE = config['main'].getint('mode')
 
+    # set up action space
+    LOWER_BOUNDS.extend([0] * NUM_DESIGN_ENV_PARAMS)
+    UPPER_BOUNDS.extend([1] * NUM_DESIGN_ENV_PARAMS)
+    action_space = gym.spaces.Box(np.array(LOWER_BOUNDS), np.array(UPPER_BOUNDS), dtype=np.float32)
+
     # initialize the gym environment
-    env = HardwareVerifEnv(NUM_ACTION_PARAMS, NUM_EVENTS, REWARD_FUNCTION, conn, logger, observation_space)
+    env = HardwareVerifEnv(NUM_EVENTS, REWARD_FUNCTION, conn, logger, observation_space, action_space)
 
     # optional: check structural correctness of the gym env
     # from stable_baselines3.common.env_checker import check_env
     # check_env(env)
 
-    from stable_baselines3 import DDPG, SAC
+    # from stable_baselines3 import DDPG, SAC
+    import stable_baselines3
     from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
 
     # The noise objects for the actor critic algorithm
@@ -184,16 +203,14 @@ def RL_run(conn, logger, timestamp, observation_space):
     action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
 
     # load hyperparameters for the RL agent from the config file
-    learning_starts = config['RL'].getint('learning_starts')
-    learning_rate = config['RL'].getfloat('learning_rate')
-    train_freq = ast.literal_eval(config['RL']['train_freq'])
-
+    RL_agent_params = dict(config.items('RL'))
+    for k, v in RL_agent_params.items():
+        RL_agent_params[k] = tryeval(v)
 
     if(MODE != 0):
         # Run the verification experiment while the RL agent learns
-        model = SAC("MlpPolicy", env, action_noise=action_noise, verbose=1,
-                    learning_starts=learning_starts, learning_rate=learning_rate,
-                    train_freq=train_freq)  # add more hyperparameters here if needed
+        RL_algo = getattr(stable_baselines3, config['main']['algorithm'])
+        model = RL_algo(env=env, action_noise=action_noise, **RL_agent_params)
         model.learn(total_timesteps=NUM_STEPS)
         model.save('model_' + timestamp)
     else:
@@ -216,10 +233,6 @@ def RL_run(conn, logger, timestamp, observation_space):
     logger.info('CONFIG | num_events | ' + str(NUM_EVENTS))
     logger.info('CONFIG | num_steps | ' + str(NUM_STEPS))
     logger.info('CONFIG | reward_function | ' + str(REWARD_FUNCTION))
-    logger.info('CONFIG | fsm_states | ' + str(NUM_SEQ_GEN_PARAMS))
-    logger.info('CONFIG | learning_starts | ' + str(learning_starts))
-    logger.info('CONFIG | learning_rate | ' + str(learning_rate))
-    logger.info('CONFIG | train_freq | ' + str(train_freq))
 
     # log the plot results computed
     logger.info('RL | result | total_binary_coverage | ' + str(env.total_binary_coverage))
