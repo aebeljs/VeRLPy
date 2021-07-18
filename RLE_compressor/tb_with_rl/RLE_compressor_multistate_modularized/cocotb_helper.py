@@ -51,6 +51,7 @@ class CocotbEnv(ABC):
         self.NUM_STEPS = self.config['main'].getint('num_steps')
         self.FSM_STATES = ast.literal_eval(self.config['main']['fsm_states'])
         self.LOWER_BOUNDS = ast.literal_eval(self.config['continuous']['lower_bounds'])
+        self.UPPER_BOUNDS = ast.literal_eval(self.config['continuous']['upper_bounds'])
 
         # get the valid value set for each discrete parameter
         discrete_params = ast.literal_eval(self.config['main']['discrete_params'])
@@ -256,10 +257,10 @@ class CocotbEnv(ABC):
 
         # log processed actions
         for i in range(len(self.LOWER_BOUNDS)):
-            self.logger.info('cocotb | result | action_hist_' + str(i + 1) + ' | ' + str(self.processed_action_list[i]))
+            self.logger.info('cocotb | result | action_hist_continuous_' + str(i + 1) + ' | ' + str([self.LOWER_BOUNDS[i], self.UPPER_BOUNDS[i]]) + ' | ' + str(self.processed_action_list[i]))
 
         for i in range(len(self.DISCRETE_PARAM_VALUES)):
             x = len(self.LOWER_BOUNDS) + i
-            self.logger.info('cocotb | result | action_hist_' + str(x + 1) + ' | ' + str(self.DISCRETE_PARAM_VALUES[i]) + ' | ' + str(self.processed_action_list[x]))
+            self.logger.info('cocotb | result | action_hist_discrete_' + str(x + 1) + ' | ' + str(self.DISCRETE_PARAM_VALUES[i]) + ' | ' + str(self.processed_action_list[x]))
 
         self.finish_experiment()
