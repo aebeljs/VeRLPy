@@ -1,14 +1,15 @@
 import cocotb
-from cocotb_helper import *
-from test_coo_compressor_helper import *
-from RL_helper import *
-from multiprocessing import *
+from cocotb_helper import CocotbEnv
+from test_coo_compressor_helper import Testbench, InputTransaction
+from cocotb.triggers import RisingEdge
 import numpy as np
 import configparser
 import ast
 import logging
 import math
 import time
+import random
+import gym
 
 class COOCompressorCocotbEnv(CocotbEnv):
     def __init__(self, dut, observation_space):

@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 import cocotb
 from cocotb.triggers import Timer
-from RL_helper import *
-from multiprocessing import *
+from RL_helper import RL_run
+from multiprocessing import Process, Pipe
 import numpy as np
 import configparser
 import ast
@@ -49,17 +49,18 @@ class CocotbEnv(ABC):
 
         # read parameters from config file
         self.NUM_STEPS = self.config['main'].getint('num_steps')
-        self.FSM_STATES = ast.literal_eval(self.config['cocotb']['fsm_states'])
+        self.FSM_STATES = ast.literal_eval(self.config['main']['fsm_states'])
+        self.LOWER_BOUNDS = ast.literal_eval(self.config['continuous']['lower_bounds'])
 
         # get the valid value set for each discrete parameter
-        discrete_params = ast.literal_eval(self.config['cocotb']['discrete_params'])
+        discrete_params = ast.literal_eval(self.config['main']['discrete_params'])
         self.DISCRETE_PARAM_VALUES = []
         for param in discrete_params:
             self.DISCRETE_PARAM_VALUES.append(ast.literal_eval(self.config['discrete'][param]))
 
         # list to store the processed action components
         self.processed_action_list = []
-        for i in range(len(self.FSM_STATES) + len(discrete_params)):
+        for i in range(len(self.LOWER_BOUNDS) + len(discrete_params)):
             self.processed_action_list.append([])
 
         self.rl_observation = 0
@@ -226,7 +227,7 @@ class CocotbEnv(ABC):
 
             # obtain the continous actions
             self.continuous_actions = received_actions[:len(received_actions) - num_discrete_params]
-            assert len(self.continuous_actions) == len(self.FSM_STATES)
+            assert len(self.continuous_actions) == len(self.LOWER_BOUNDS)
 
             # save the processed action component values
             processed_action = self.continuous_actions + self.discrete_actions
@@ -254,11 +255,11 @@ class CocotbEnv(ABC):
         self.logger.info('cocotb | RL process joined ')
 
         # log processed actions
-        for i in range(len(self.FSM_STATES)):
+        for i in range(len(self.LOWER_BOUNDS)):
             self.logger.info('cocotb | result | action_hist_' + str(i + 1) + ' | ' + str(self.processed_action_list[i]))
 
         for i in range(len(self.DISCRETE_PARAM_VALUES)):
-            x = len(self.FSM_STATES) + i
+            x = len(self.LOWER_BOUNDS) + i
             self.logger.info('cocotb | result | action_hist_' + str(x + 1) + ' | ' + str(self.DISCRETE_PARAM_VALUES[i]) + ' | ' + str(self.processed_action_list[x]))
 
         self.finish_experiment()
