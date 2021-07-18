@@ -52,11 +52,14 @@ class SingleStateHardwareVerifEnv(gym.Env):
     below.
     '''
     def __init__(self, num_action_params, num_events, reward_function,
-                 conn, logger):
+                 conn, logger, observation_space):
         # essential for the gym env
         self.action_space = gym.spaces.Box(0., 1., (num_action_params, ))
-        self.observation_space = gym.spaces.Discrete(1)  # single Markov state
+        self.observation_space = observation_space
 
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        self.log_step = config['main'].getint('log_step')
         self.num_action_params = num_action_params
         self.num_events = num_events
         self.total_binary_coverage = [0] * num_events   # stores the individual event coverage
@@ -71,7 +74,7 @@ class SingleStateHardwareVerifEnv(gym.Env):
 
     def step(self, action):
         # essential for the gym env
-        self.conn.send('rl_step')
+        self.conn.send('RL_step')
         global step_count
         print('Taking RL step ' + str(step_count))
         generator_probab = []
@@ -93,30 +96,29 @@ class SingleStateHardwareVerifEnv(gym.Env):
         observation = self.conn.recv()
         done = self.conn.recv()
         info = self.conn.recv()
-        #observation, done, info = 0, True, {}   # observation is 0 alwyas for single Markov state space
 
         print('reward:', reward)
         self.reward_list.append(reward)
         self.total_coverage.update(Counter(coverage))   # update total combination coverage
 
-        self.logger.info('RL | Step ' + str(step_count) + ' | action | ' + str(generator_probab))
-        self.logger.info('RL | Step ' + str(step_count) + ' | coverage | ' + str(coverage))
-        self.logger.info('RL | Step ' + str(step_count) + ' | binary_coverage | ' + str(binary_coverage))
-        self.logger.info('RL | Step ' + str(step_count) + ' | reward | ' + str(reward))
-        self.logger.info('RL | Step ' + str(step_count) + ' | observation | ' + str(observation))
-        self.logger.info('RL | Step ' + str(step_count) + ' | done | ' + str(done))
-        self.logger.info('RL | Step ' + str(step_count) + ' | info | ' + str(info))
+        if(self.log_step != 0):
+            self.logger.info('RL | Step ' + str(step_count) + ' | action | ' + str(generator_probab))
+            self.logger.info('RL | Step ' + str(step_count) + ' | coverage | ' + str(coverage))
+            self.logger.info('RL | Step ' + str(step_count) + ' | binary_coverage | ' + str(binary_coverage))
+            self.logger.info('RL | Step ' + str(step_count) + ' | reward | ' + str(reward))
+            self.logger.info('RL | Step ' + str(step_count) + ' | observation | ' + str(observation))
+            self.logger.info('RL | Step ' + str(step_count) + ' | done | ' + str(done))
+            self.logger.info('RL | Step ' + str(step_count) + ' | info | ' + str(info))
 
         return observation, reward, done, info
 
     def reset(self):
         # essential for the gym env
-        self.conn.send('rl_reset')
+        self.conn.send('RL_reset')
         global step_count
-        self.logger.info('RL | Step ' + str(step_count) + ' |dut reset asserted')
-        state = 0   # state is constant as it is a single Markov state space
-        # DUT reset should get called during before next step too
-        self.logger.info('RL | Step ' + str(step_count) + ' | reset called')
+        state = 0   # assuming that in each episode, the DUT is reset
+        if(self.log_step != 0):
+            self.logger.info('RL | Step ' + str(step_count) + ' | reset called')
         step_count += 1
         return state
 
@@ -146,7 +148,7 @@ class SingleStateHardwareVerifEnv(gym.Env):
         return reward
 
 
-def RL_run(conn, logger, timestamp):
+def RL_run(conn, logger, timestamp, observation_space):
     '''
     Entry point of the RL process.
 
@@ -165,9 +167,10 @@ def RL_run(conn, logger, timestamp):
     NUM_SEQ_GEN_PARAMS = len(ast.literal_eval(config['cocotb']['fsm_states']))
     NUM_DESIGN_ENV_PARAMS = len(ast.literal_eval(config['cocotb']['discrete_params']))
     NUM_ACTION_PARAMS = NUM_SEQ_GEN_PARAMS + NUM_DESIGN_ENV_PARAMS
+    MODE = config['main'].getint('mode')
 
     # initialize the gym environment
-    env = SingleStateHardwareVerifEnv(NUM_ACTION_PARAMS, NUM_EVENTS, REWARD_FUNCTION, conn, logger)
+    env = SingleStateHardwareVerifEnv(NUM_ACTION_PARAMS, NUM_EVENTS, REWARD_FUNCTION, conn, logger, observation_space)
 
     # optional: check structural correctness of the gym env
     # from stable_baselines3.common.env_checker import check_env
@@ -185,12 +188,22 @@ def RL_run(conn, logger, timestamp):
     learning_rate = config['RL'].getfloat('learning_rate')
     train_freq = ast.literal_eval(config['RL']['train_freq'])
 
-    # Run the berification experiment while the RL agent learns
-    model = SAC("MlpPolicy", env, action_noise=action_noise, verbose=1,
-                learning_starts=learning_starts, learning_rate=learning_rate,
-                train_freq=train_freq)
-    model.learn(total_timesteps=NUM_STEPS)
-    model.save('model_' + timestamp)
+
+    if(MODE != 0):
+        # Run the verification experiment while the RL agent learns
+        model = SAC("MlpPolicy", env, action_noise=action_noise, verbose=1,
+                    learning_starts=learning_starts, learning_rate=learning_rate,
+                    train_freq=train_freq)  # add more hyperparameters here if needed
+        model.learn(total_timesteps=NUM_STEPS)
+        model.save('model_' + timestamp)
+    else:
+        # Generate the random baseline without the RL agent
+        env.reset()
+        for i in range(NUM_STEPS):
+            action = env.action_space.sample()
+            obs, rew, done, info = env.step(action)
+            if(done):
+                env.reset()
 
     print(env.total_binary_coverage)
 

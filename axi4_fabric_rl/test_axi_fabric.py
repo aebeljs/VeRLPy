@@ -1,4 +1,3 @@
-#from test_axi_fabric_helper import read_master_response
 from ctypes import resize
 import cocotb
 from cocotb_helper import *
@@ -12,13 +11,12 @@ import math
 import time
 from test_axi_fabric_helper import *
 
-
-class CompressorCocotbEnv(CocotbEnv):
-    def __init__(self, dut):
+class AXI4CrossbarCocotbEnv(CocotbEnv):
+    def __init__(self, dut, observation_space):
         super().__init__()
         self.dut = dut
         self.tb = TestBench(dut)
-
+        self.observation_space = observation_space
         self.history = ''
         self.num_inputs = 100
         self.drive_input_iter = 0
@@ -32,7 +30,7 @@ class CompressorCocotbEnv(CocotbEnv):
     @cocotb.coroutine
     def setup_rl_episode(self):
         self.cocotb_coverage.clear()
-        self.clock_coroutine = cocotb.fork(self.clock_gen(self.dut.CLK,1))
+        self.clock_coroutine = cocotb.fork(self.clock_gen(self.dut.CLK, 1))
         self.coverage_coroutine = cocotb.fork(monitor_signals(self.dut, self.cocotb_coverage))   # tracks states covered
         self.history = ''    # to store the binary sequence for FSM based sequence generation
         self.m0_array = np.zeros(10)
@@ -55,22 +53,30 @@ class CompressorCocotbEnv(CocotbEnv):
         self.s9_coroutine = cocotb.fork(send_slave_9_response(self.dut))
 
         yield Timer(1)
-
-    @cocotb.coroutine
-    def assert_dut_reset_from_rl(self):
-        yield self.assert_reset(self.dut.RST_N,0,1,2)
+        yield self.assert_reset(self.dut.RST_N, 0, 1, 2)
 
 
     @cocotb.coroutine
-    def rl_step_dut_tb_configure(self):
+    def rl_step(self):
         self.logger.info('cocotb | dut verify configure begin ')
         self.master_wr_addr_0 = self.discrete_actions[0]
         print('master_addr_0 = ', self.master_wr_addr_0)
         self.master_wr_addr_1 = self.discrete_actions[1]
         print('master_addr_1 = ', self.master_wr_addr_1)
-
         yield RisingEdge(self.dut.CLK)
         self.logger.info('cocotb | dut verify configure end ')
+
+        self.logger.info('cocotb | rl step dut drive begin ')
+        self.drive_input_iter=0
+        min_addr = int(min(self.master_wr_addr_0,self.master_wr_addr_1)/4096)
+        max_addr = int(max(self.master_wr_addr_0,self.master_wr_addr_1)/4096)
+        while(self.drive_input_iter < self.num_inputs):
+            m0_addr = random.randint(min_addr,max_addr)*4096
+            m1_addr = random.randint(min_addr,max_addr)*4096
+            verif_dut_drive_coroutine = cocotb.fork(self.verify_dut_input_drive(m0_addr,m1_addr))
+            yield verif_dut_drive_coroutine.join()
+        self.rl_done = True
+        self.logger.info('cocotb | rl step dut drive end ')
 
 
     @cocotb.coroutine
@@ -82,7 +88,7 @@ class CompressorCocotbEnv(CocotbEnv):
                 if(self.dut.RDY_m_i_wr_addr_1_enq != 1):
                     yield RisingEdge(self.dut.CLK)
             else:      
-                print("Driving Input",self.drive_input_iter,int(m0_addr/4096)-1,int(m1_addr/4096)-1,self.m0_array,self.m1_array)
+                #print("Driving Input",self.drive_input_iter,int(m0_addr/4096)-1,int(m1_addr/4096)-1,self.m0_array,self.m1_array)
                 self.m0_array[int(m0_addr/4096)-1] = self.m0_array[int(m0_addr/4096)-1] + 1
                 self.m1_array[int(m1_addr/4096)-1] = self.m1_array[int(m1_addr/4096)-1] + 1
                 m0_addr = m0_addr << 29
@@ -93,43 +99,6 @@ class CompressorCocotbEnv(CocotbEnv):
                     yield RisingEdge(self.dut.CLK)
                 self.drive_input_iter = self.drive_input_iter + 1
                 break
-
-
-    @cocotb.coroutine
-    def rl_step_dut_input_drive(self):
-        self.logger.info('cocotb | rl step dut drive begin ')
-        self.drive_input_iter=0
-        min_addr = int(min(self.master_wr_addr_0,self.master_wr_addr_1)/4096)
-        max_addr = int(max(self.master_wr_addr_0,self.master_wr_addr_1)/4096)
-        #min_addr = 7
-        #max_addr = 8
-        #if((max_addr - min_addr) == 1):
-        #    if(max_addr == 10):
-        #        min_addr = min_addr - 1
-        #    else:
-        #        max_addr = max_addr + 1
-        #if(self.master_wr_addr_0 != self.master_wr_addr_1):
-        #    max_addr = max_addr + 4096
-        #min_addr = min_addr*4096
-        #max_addr = max_addr*4096
-        while(self.drive_input_iter < self.num_inputs):
-            m0_addr = random.randint(min_addr,max_addr)*4096
-            m1_addr = random.randint(min_addr,max_addr)*4096
-            #if(m0_addr % 4096 != 0):
-            #    m0_addr = math.floor(int(m0_addr/4096))*4096 + 4096
-            #if(m1_addr % 4096 != 0):
-            #    m1_addr = math.floor(int(m1_addr/4096))*4096 + 4096
-            verif_dut_drive_coroutine = cocotb.fork(self.verify_dut_input_drive(m0_addr,m1_addr))
-            yield verif_dut_drive_coroutine.join()
-        self.logger.info('cocotb | rl step dut drive end ')
-        self.rl_done = True
-
-
-    def rl_step_compute_feedback(self):
-        self.logger.info('cocotb | computing rl feedback ')
-        observation = 0
-        info = {}
-        return observation,info
 
 
     @cocotb.coroutine
@@ -182,15 +151,11 @@ def monitor_signals(dut, cocotb_coverage):
              (int)(dut.fabric_v_f_wr_mis_6.not_ring_full.value == 0),
              (int)(dut.fabric_v_f_wr_mis_7.not_ring_full.value == 0),
              (int)(dut.fabric_v_f_wr_mis_8.not_ring_full.value == 0),
-             (int)(dut.fabric_v_f_wr_mis_9.not_ring_full.value == 0),
-             (int)(dut.fabric_v_f_wr_sjs_0.not_ring_full.value == 0),
-             (int)(dut.fabric_v_f_wr_sjs_1.not_ring_full.value == 0)]
+             (int)(dut.fabric_v_f_wr_mis_9.not_ring_full.value == 0)]
         s = ''.join(map(str, s))
         cocotb_coverage.append(s)
-        #if(dut.EN_m_i_wr_addr_0_enq == 1):
-        #    print("Slave Not Full Register values : ",s)
 
 @cocotb.test()
 def run_test(dut):
-    cocotb_env = CompressorCocotbEnv(dut)
+    cocotb_env = AXI4CrossbarCocotbEnv(dut,gym.spaces.Discrete(1))
     yield cocotb_env.run()
