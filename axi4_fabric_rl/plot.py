@@ -86,11 +86,13 @@ for line in file:
     if(len(components) < 5):
         continue
     if((components[1] == 'INFO') and (components[2] == 'cocotb') and (components[3] == 'result') and ('action_hist' in components[4])):
-        i = components[4].split('_')[2]
-        if(len(components) < 7):
+        i = components[4].split('_')[3]
+        _type = components[4].split('_')[2]
+        if(_type == 'continuous'):
             # continuous action
-            data = ast.literal_eval(components[5])
-            plt.hist(data, bins=100, range=[0.0, 1.0])
+            range = ast.literal_eval(components[5])
+            data = ast.literal_eval(components[6])
+            plt.hist(data, bins=100, range=range)
             plt.tight_layout()
             plt.title('Histogram of action param ' + str(i))
             plt.savefig('./hist_of_actions' + '_param=' + str(i) + suffix + '.png', bbox_inches='tight')
@@ -99,7 +101,8 @@ for line in file:
             # discrete action
             labels = ast.literal_eval(components[5])
             data = ast.literal_eval(components[6])
-            plt.hist(data, bins=100, range=[min(labels), max(labels)])
+            plt.hist(data, bins=100)
+            plt.xticks(labels)
             plt.tight_layout()
             plt.title('Histogram of action param ' + str(i))
             plt.savefig('./hist_of_actions' + '_param=' + str(i) + suffix + '.png', bbox_inches='tight')
