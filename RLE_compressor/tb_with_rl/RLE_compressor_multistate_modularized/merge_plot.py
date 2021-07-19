@@ -136,8 +136,9 @@ for line in file:
         plt.close()
         break
 
-action_data_1 = 0
 action_data_2 = 0
+action_data_3 = 0
+action_cont = 0
 
 file.seek(0)
 for line in file:
@@ -157,6 +158,7 @@ for line in file:
             plt.title('Histogram of action param ' + str(i))
             plt.savefig('./hist_of_actions' + '_param=' + str(i) + suffix + '.png', bbox_inches='tight')
             plt.close()
+            action_cont = data
         else:
             # discrete action
             labels = ast.literal_eval(components[5])
@@ -167,10 +169,10 @@ for line in file:
             plt.title('Histogram of action param ' + str(i))
             plt.savefig('./hist_of_actions' + '_param=' + str(i) + suffix + '.png', bbox_inches='tight')
             plt.close()
-        if(i == "1"):
-            action_data_1 = data
-        else:
-            action_data_2 = data
+            if(i == "2"):
+                action_data_2 = data
+            elif(i == "3"):
+                action_data_3 = data
 
 file_1.seek(0)
 for line in file_1:
@@ -201,20 +203,22 @@ for line in file_1:
             plt.savefig('./hist_of_actions' + '_param=' + str(i) + suffix_1 + '.png', bbox_inches='tight')
             plt.close()
 
-        x = np.array(labels_1)
-        width = 1000
-        if(i == "1"):
-            data = action_data_1
-        else:
-            data = action_data_2
-        hist_data = np.histogram(data,bins=10)
-        hist_data_1 = np.histogram(data_1,bins=10)
-        plt.bar(x-1000, hist_data[0], width, color='dodgerblue')
-        plt.bar(x, hist_data_1[0], width, color='darkslateblue')
-        plt.xticks(labels_1)
-        plt.xlabel("Events")
-        plt.legend(["Random", "RL"])
-        plt.tight_layout()
-        plt.title('Histogram of action param ' + str(i))
-        plt.savefig('./merge_hist_of_actions_' + str(i) + '.png', bbox_inches='tight')
-        plt.close()
+            x = np.array(labels_1)
+            width = 0
+            if(i == "2"):
+                data = action_data_2
+                width = 0.3
+            elif(i == "3"):
+                data = action_data_3
+                width = 30
+            hist_data = np.histogram(data,bins=len(labels_1))
+            hist_data_1 = np.histogram(data_1,bins=len(labels_1))
+            plt.bar(x-width, hist_data[0], width, color='dodgerblue')
+            plt.bar(x, hist_data_1[0], width, color='darkslateblue')
+            plt.xticks(labels_1)
+            plt.xlabel("Events")
+            plt.legend(["Random", "RL"])
+            plt.tight_layout()
+            plt.title('Histogram of action param ' + str(i))
+            plt.savefig('./merge_hist_of_actions_' + str(i) + '.png', bbox_inches='tight')
+            plt.close()
