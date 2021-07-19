@@ -97,7 +97,7 @@ plt.xlabel("Events")
 plt.legend(["Random", "RL"])
 plt.tight_layout()
 plt.title("Histogram of individual event coverage\n")
-plt.savefig('./merge_hist_of_binary_coverage.png', bbox_inches='tight')
+plt.savefig('./merge_hist_of_binary_coverage.pdf', dpi=1200, format='pdf', bbox_inches='tight')
 plt.close()
  
 
@@ -219,5 +219,5 @@ for line in file_1:
         plt.legend(["Random", "RL"])
         plt.tight_layout()
         plt.title('Histogram of Discrete action param ' + str(i))
-        plt.savefig('./merge_hist_of_actions_' + str(i) + '.png', bbox_inches='tight')
+        plt.savefig('./merge_hist_of_actions_' + str(i) + '.pdf', dpi=1200, format='pdf', bbox_inches='tight')
         plt.close()
