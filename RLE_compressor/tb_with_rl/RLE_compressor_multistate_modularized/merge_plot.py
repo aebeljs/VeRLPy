@@ -205,20 +205,26 @@ for line in file_1:
 
             x = np.array(labels_1)
             width = 0
+            xlabel=""
+            param_num = ""
             if(i == "2"):
                 data = action_data_2
                 width = 0.3
+                xlabel = "zero counter width"
+                param_num = "1"
             elif(i == "3"):
                 data = action_data_3
                 width = 30
+                xlabel = "Number of elements in Feature Map"
+                param_num = "2"
             hist_data = np.histogram(data,bins=len(labels_1))
             hist_data_1 = np.histogram(data_1,bins=len(labels_1))
             plt.bar(x-width, hist_data[0], width, color='dodgerblue')
             plt.bar(x, hist_data_1[0], width, color='darkslateblue')
             plt.xticks(labels_1)
-            plt.xlabel("Events")
+            plt.xlabel(xlabel)
             plt.legend(["Random", "RL"])
             plt.tight_layout()
-            plt.title('Histogram of action param ' + str(i))
+            plt.title('Histogram of discrete action param ' + str(param_num))
             plt.savefig('./merge_hist_of_actions_' + str(i) + '.png', bbox_inches='tight')
             plt.close()

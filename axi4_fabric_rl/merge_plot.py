@@ -203,18 +203,21 @@ for line in file_1:
 
         x = np.array(labels_1)
         width = 1000
+        xlabel = ""
         if(i == "1"):
             data = action_data_1
+            xlabel = "Address Limit 1"
         else:
             data = action_data_2
+            xlabel = "Address Limit 2"
         hist_data = np.histogram(data,bins=10)
         hist_data_1 = np.histogram(data_1,bins=10)
         plt.bar(x-1000, hist_data[0], width, color='dodgerblue')
         plt.bar(x, hist_data_1[0], width, color='darkslateblue')
         plt.xticks(labels_1)
-        plt.xlabel("Events")
+        plt.xlabel(xlabel)
         plt.legend(["Random", "RL"])
         plt.tight_layout()
-        plt.title('Histogram of action param ' + str(i))
+        plt.title('Histogram of Discrete action param ' + str(i))
         plt.savefig('./merge_hist_of_actions_' + str(i) + '.png', bbox_inches='tight')
         plt.close()
