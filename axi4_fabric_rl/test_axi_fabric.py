@@ -68,11 +68,11 @@ class AXI4CrossbarCocotbEnv(CocotbEnv):
 
         self.logger.info('cocotb | rl step dut drive begin ')
         self.drive_input_iter=0
-        min_addr = int(min(self.master_wr_addr_0,self.master_wr_addr_1)/4096)
-        max_addr = int(max(self.master_wr_addr_0,self.master_wr_addr_1)/4096)
+        min_addr = min(self.master_wr_addr_0,self.master_wr_addr_1)
+        max_addr = max(self.master_wr_addr_0,self.master_wr_addr_1)
         while(self.drive_input_iter < self.num_inputs):
-            m0_addr = random.randint(min_addr,max_addr)*4096
-            m1_addr = random.randint(min_addr,max_addr)*4096
+            m0_addr = random.randint(min_addr,max_addr)
+            m1_addr = random.randint(min_addr,max_addr)
             verif_dut_drive_coroutine = cocotb.fork(self.verify_dut_input_drive(m0_addr,m1_addr))
             yield verif_dut_drive_coroutine.join()
         self.rl_done = True
