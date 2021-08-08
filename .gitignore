@@ -3,3 +3,5 @@
 **/results.xml
 **/sim_build/*
 **/__pycache__/*
+**/dist/*
+**/verlpy.egg-info/*
