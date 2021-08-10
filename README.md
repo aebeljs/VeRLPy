@@ -1,7 +1,7 @@
 # VeRLPy
 ** **Under Construction** **
 
-[VeRLPy](https://arxiv.org/) is an open-source python library developed to improve the digital hardware verification process by using Reinforcement Learning (RL). It provides a generic [Gym](https://gym.openai.com/) environment implementation for building [cocotb](https://docs.cocotb.org/en/stable/)-based testbenches for verifying any hardware design.
+[VeRLPy](https://arxiv.org/abs/2108.03978) is an open-source python library developed to improve the digital hardware verification process by using Reinforcement Learning (RL). It provides a generic [Gym](https://gym.openai.com/) environment implementation for building [cocotb](https://docs.cocotb.org/en/stable/)-based testbenches for verifying any hardware design.
 
 ## Installation
 The easiest way to start using VeRLPy is to install it using `pip install verlpy`
@@ -9,7 +9,7 @@ The easiest way to start using VeRLPy is to install it using `pip install verlpy
 VeRLPy is currently dependent on OpenAI [Gym](https://gym.openai.com/), [cocotb](https://docs.cocotb.org/en/stable/) and [Stable Baselines3](https://stable-baselines3.readthedocs.io/en/master/). These packages should get installed alongside VeRLPy when installing using `pip`. For running the verification, a simulator compatible with cocotb is additionally required. Please refer to the official  [cocotb](https://docs.cocotb.org/en/stable/) documentation to set this up.
 
 ## Usage Guide
-Having familiarity with [cocotb](https://docs.cocotb.org/en/stable/), OpenAI [Gym](https://gym.openai.com/) and [this whitepaper on VeRLPy](https://arxiv.org/) will be very beneficial to get started with the VeRLPy library.
+Having familiarity with [cocotb](https://docs.cocotb.org/en/stable/), OpenAI [Gym](https://gym.openai.com/) and [this whitepaper on VeRLPy](https://arxiv.org/abs/2108.03978) will be very beneficial to get started with the VeRLPy library.
 
 The hardware design provided in Verilog or VHDL is simulated by cocotb using the chosen simulator. VeRLPy aims to offer a clean interface for bringing RL logic into the conventional cocotb testbench while adhering to the OpenAI Gym environment structure allowing users to leverage the standard RL tools. The DUT and the verification testbench are the environment for the RL agent to act on. The agent chooses an action which is executed on the environment and the consequences of that action are informed back to the agent in terms of the state and the reward. 
 
