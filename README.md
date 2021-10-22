@@ -61,7 +61,7 @@ class MyExampleDesignCocotbEnv(CocotbEnv):
         # add here the logic to be executed after all
         # the episodes are completed
 ```
-Note that all the coroutines with the deorator `cocotb.coroutine` require a `yield` statement in the body like how it is in standard cocotb testbenches.
+Note that all the coroutines with the decorator `cocotb.coroutine` require a `yield` statement in the body like how it is in standard cocotb testbenches.
 
 ### Instantiating the verification environment object
 
@@ -188,7 +188,7 @@ def run_test(dut):
 The `monitor_signals` coroutine added above monitors the DUT for events of interest that count towards the functional coverage. The  boolean logical expressions in the list `s` above correspond to the logical expressions for identifying each event. The number of times these events occur affect the reward signal given to the RL agent. `monitor_signals` should track these events and add them to the `cocotb_coverage` attribute of the `MyExampleDesignCocotbEnv` class that we wrote. `monitor_signals` is invoked in the `setup_rl_episode` coroutine along with the clock and reset coroutines. It is passed the `cocotb_coverage` attribute as an argument. Note that `monitor_signals` is killed in the `terminate_rl_episode` coroutine at the end of each RL episode. This is important for all coroutines since it might otherwise lead to performance issues with multiple "alive" coroutines still ongoing from previous episodes.
 
 ### Configuration File
-A configuration file `config.ini` needs to be provided to specify the parameter related to the simulation and the RL agent. A sample coniguration file is provided below with comments for what each section and key corresponds to.
+A configuration file `config.ini` needs to be provided to specify the parameters related to the simulation and the RL agent. A sample coniguration file is provided below with comments for what each section and key corresponds to.
 
 ```ini
 ; This section is to provide the
@@ -250,7 +250,7 @@ learning_rate = 0.0003
 train_freq = (1, 'episode')
 verbose = 1
 ```
-The `reward_function` key specifies how the functional events tracked in the `self.cocotb_coverage` attribute need to be rewarded for improving coverage. `reward_function` set as `[0, 0, 1]` like above implies that if the third functional event occurs during a step, a reward is given to the RL agent. Refer to the [paper](https://arxiv.org/) for the actual computation details.
+The `reward_function` key specifies how the functional events tracked in the `self.cocotb_coverage` attribute need to be rewarded for improving coverage. `reward_function` set as `[0, 0, 1]` like above implies that if the third functional event occurs during a step, a reward is given to the RL agent. Refer to the [paper](https://arxiv.org/abs/2108.03978) for the actual computation details.
 
 The `[continuous]` and `[discrete]` sections together specify the total action space of the RL agent. The continuous dimensions of the action space based on the above configuration file is the cross product `[0, 1] x [5, 7]`. The discrete dimensions of the the action space is the cross product `{1, 2, ..., 8} x {100, 200, ..., 1000}`. Therefore the complete action space is the cross product `[0, 1] x [5, 7] x {1, 2, ..., 8} x {100, 200, ..., 1000}`.
 
@@ -262,7 +262,7 @@ The list `self.cocotb_coverage` needs to be updated with the strings correspondi
 
 ### Multi-step RL
 
-VeRLPy by default assumes a single step single state MDP. If a multi-step MDP is required, it can be implemented by overriding `compute_rl_observation` function in the `MyExampleDesignCocotbEnv` class. The internal elements of the DUT that need to be tracked for computing the observation/state after each step can be done so by utilizing a separate coroutine like `monitor_signals` is used for computing the reward.
+VeRLPy by default assumes a single step single state MDP. If a multi-step MDP is required, it can be implemented by overriding `compute_rl_observation` function in the `MyExampleDesignCocotbEnv` class. The internal elements of the DUT that need to be tracked for computing the observation/state after each step can be done so by utilizing a separate coroutine like how `monitor_signals` is used for tracking the coverage to compute the reward.
 
 ### Make file
 
@@ -271,6 +271,25 @@ The make file can be written like how it is done usually in cocotb testbenches. 
 ## Citation
 
 If you find this work useful, consider citing it with this BibTex:
+```
+@article{DBLP:journals/corr/abs-2108-03978,
+  author    = {Aebel Joe Shibu and
+               Sadhana S and
+               Shilpa N and
+               Pratyush Kumar},
+  title     = {VeRLPy: Python Library for Verification of Digital Designs with Reinforcement
+               Learning},
+  journal   = {CoRR},
+  volume    = {abs/2108.03978},
+  year      = {2021},
+  url       = {https://arxiv.org/abs/2108.03978},
+  eprinttype = {arXiv},
+  eprint    = {2108.03978},
+  timestamp = {Wed, 11 Aug 2021 15:24:08 +0200},
+  biburl    = {https://dblp.org/rec/journals/corr/abs-2108-03978.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+```
 
 ## Change Log
 08-08-2021 - Usage guide added
