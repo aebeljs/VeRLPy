@@ -1,9 +1,9 @@
 from cocotb.decorators import coroutine
 from cocotb.triggers import RisingEdge
-from cocotb.monitors import BusMonitor
-from cocotb.drivers import BusDriver
+from cocotb_bus.monitors import BusMonitor
+from cocotb_bus.drivers import BusDriver
 from cocotb.binary import BinaryValue
-from cocotb.scoreboard import Scoreboard
+from cocotb_bus.scoreboard import Scoreboard
 
 # Parameters : In width - 16, out width - 32, coordinate - 15
 

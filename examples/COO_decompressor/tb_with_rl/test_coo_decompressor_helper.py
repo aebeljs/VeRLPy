@@ -1,10 +1,10 @@
 import cocotb
 from cocotb.decorators import coroutine
 from cocotb.triggers import Timer, RisingEdge, FallingEdge
-from cocotb.monitors import BusMonitor
-from cocotb.drivers import BusDriver
+from cocotb_bus.monitors import BusMonitor
+from cocotb_bus.drivers import BusDriver
 from cocotb.binary import BinaryValue
-from cocotb.scoreboard import Scoreboard
+from cocotb_bus.scoreboard import Scoreboard
 
 class Driver(BusDriver):
     _signals = [
