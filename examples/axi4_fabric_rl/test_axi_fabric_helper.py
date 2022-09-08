@@ -1,6 +1,6 @@
 import cocotb
 from cocotb.triggers import Timer, RisingEdge
-from cocotb.drivers import BusDriver
+from cocotb_bus.drivers import BusDriver
 from cocotb.binary import BinaryValue
 
 s0_resp_delay = 10
