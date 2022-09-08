@@ -6,7 +6,7 @@
 ## Installation
 The easiest way to start using VeRLPy is to install it using `pip install verlpy`
 
-VeRLPy is currently dependent on OpenAI [Gym](https://gym.openai.com/), [cocotb](https://docs.cocotb.org/en/stable/) and [Stable Baselines3](https://stable-baselines3.readthedocs.io/en/master/). These packages should get installed alongside VeRLPy when installing using `pip`. For running the verification, a simulator compatible with cocotb is additionally required. Please refer to the official  [cocotb](https://docs.cocotb.org/en/stable/) documentation to set this up.
+VeRLPy is currently dependent on OpenAI [Gym](https://gym.openai.com/), [cocotb](https://docs.cocotb.org/en/stable/), [cocotb-bus](https://github.com/cocotb/cocotb-bus), and [Stable Baselines3](https://stable-baselines3.readthedocs.io/en/master/). These packages should get installed alongside VeRLPy when installing using `pip`. For running the verification, a simulator compatible with cocotb is additionally required. Please refer to the official  [cocotb](https://docs.cocotb.org/en/stable/) documentation to set this up.
 
 ## Usage Guide
 Having familiarity with [cocotb](https://docs.cocotb.org/en/stable/), OpenAI [Gym](https://gym.openai.com/) and [this whitepaper on VeRLPy](https://arxiv.org/abs/2108.03978) will be very beneficial to get started with the VeRLPy library.
